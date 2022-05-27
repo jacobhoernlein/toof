@@ -70,6 +70,12 @@ class ToofBot(commands.Bot):
 
         for filename in os.listdir(cogfolder):
             if filename.endswith('.py'):
-                print(f"Reloading: {cogfolder}.{filename[:-3]}")
-                self.unload_extension(f'{cogfolder}.{filename[:-3]}')
-                self.load_extension(f'{cogfolder}.{filename[:-3]}')
+                cogname = f'{cogfolder}.{filename[:-3]}'
+                print(f"Reloading: {cogname}")
+                
+                try:
+                    self.unload_extension(cogname)
+                except commands.ExtensionNotLoaded:
+                    print(f"Could not unload {cogname}. Not loaded.")
+                
+                self.load_extension(cogname)
