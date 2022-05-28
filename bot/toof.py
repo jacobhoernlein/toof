@@ -68,14 +68,18 @@ class ToofBot(commands.Bot):
         print("*rolls over*")
         await self.prep_close()
 
+        loaded_extensions = []
+        for extension in self.extensions:
+            loaded_extensions.append(str(extension))
+        for extension in loaded_extensions:
+            self.unload_extension(extension)
+
         for filename in os.listdir(cogfolder):
             if filename.endswith('.py'):
-                cogname = f'{cogfolder}.{filename[:-3]}'
-                print(f"Reloading: {cogname}")
+                extension = f'{cogfolder}.{filename[:-3]}'
                 
                 try:
-                    self.unload_extension(cogname)
-                except commands.ExtensionNotLoaded:
-                    print(f"Could not unload {cogname}. Not loaded.")
+                    self.load_extension(extension)
+                except commands.NoEntryPointError:
+                    print(f"No setup function for {extension}. Skipping")
                 
-                self.load_extension(cogname)
