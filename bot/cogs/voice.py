@@ -5,7 +5,6 @@ import datetime as dt
 import discord
 from discord.ext import commands, tasks
 from discord import FFmpegPCMAudio
-
 import youtube_dl as ytdl
 
 class ToofVoice(commands.Cog):
@@ -43,7 +42,7 @@ class ToofVoice(commands.Cog):
             song = self.music_queue.pop(0)
 
             voice.play(
-                discord.FFmpegPCMAudio(
+                FFmpegPCMAudio(
                     song['url'],
                     **self.FFMPEG_OPTIONS
                 ),

@@ -1,6 +1,5 @@
 """Basic commands for Toof"""
 
-from ast import main
 import os
 import datetime as dt
 from random import choice
@@ -57,17 +56,15 @@ class ToofCommands(commands.Cog):
     @commands.group(aliases=["picture"])
     async def pic(self, ctx: commands.Context):
         """Sends a random toofpic"""
-        if ctx.invoked_subcommand:
-            return
-        
-        filename = choice(self.toofpics)
-        with open(filename, 'rb') as fp:
-            pic = discord.File(fp, filename=filename)
-            await ctx.send(file=pic)
+        if not ctx.invoked_subcommand: 
+            filename = choice(self.toofpics)
+            with open(filename, 'rb') as fp:
+                pic = discord.File(fp, filename=filename)
+                await ctx.send(file=pic)
 
     # Adds a toofpic to the folder
-    @pic.command(hidden=True)
-    async def add(self, ctx: commands.Context):
+    @pic.command(name="add", hidden=True)
+    async def pic_add(self, ctx: commands.Context):
         """Adds a picture to toof pics folder"""
         if ctx.author.id != 243845903146811393:
             await ctx.message.add_reaction("❌")
@@ -82,14 +79,14 @@ class ToofCommands(commands.Cog):
         file:discord.Attachment = ctx.message.attachments[0]
 
         # No conversion necessary, saves directly
-        if file.filename.endswith('.jpg'):
+        if file.filename.lower().endswith('.jpg'):
             with open(fileaddress, 'wb') as fp:
                 await file.save(fp)
 
             self.toofpics.append(fileaddress)
             await ctx.message.add_reaction("👍")
         # Converts image from png to jpg, then saves it
-        elif file.filename.endswith('.png'):
+        elif file.filename.lower().endswith('.png'):
             with open('temp.png', 'wb') as fp:
                 await file.save(fp)
 
@@ -101,7 +98,7 @@ class ToofCommands(commands.Cog):
             self.toofpics.append(fileaddress)
             await ctx.message.add_reaction("👍")
         # Converts HEIC to jpg, then saves it
-        elif file.filename.endswith('.heic'):
+        elif file.filename.lower().endswith('.heic'):
             with open('temp.heic', 'wb') as fp:
                 await file.save(fp)
 
@@ -258,8 +255,8 @@ class ToofCommands(commands.Cog):
         if ctx.invoked_subcommand:
             return
 
-    @bday.command()
-    async def add(self, ctx:commands.Context, birthday:str=None):
+    @bday.command(name="add")
+    async def bday_add(self, ctx:commands.Context, birthday:str=None):
         """Add your birthday to the list"""
         # Checks to make sure a user hasn't already set their birthday
         for birthday in self.bot.config.birthdays.keys():
