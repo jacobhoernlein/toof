@@ -12,16 +12,11 @@ class ToofTwitter(commands.Cog):
     def __init__(self, bot:toof.ToofBot):
         self.bot = bot
         
-        api_token = os.getenv('TWEEPYAPITOKEN')
-        api_secret = os.getenv('TWEEPYAPISECRET')
-        access = os.getenv('TWEEPYACCESS')
-        access_secret = os.getenv('TWEEPYACCESSSECRET')
-
         self.tpclient = AsyncClient(
-            consumer_key=api_token,
-            consumer_secret=api_secret,
-            access_token=access,
-            access_token_secret=access_secret
+            consumer_key=os.getenv('TWEEPYAPITOKEN'),
+            consumer_secret=os.getenv('TWEEPYAPISECRET'),
+            access_token=os.getenv('TWEEPYACCESS'),
+            access_token_secret=os.getenv('TWEEPYACCESSSECRET')
         )
 
     # Starts loops
@@ -48,7 +43,7 @@ class ToofTwitter(commands.Cog):
         # Gets timeline using the Tweepy client established in __init__
         timeline = await self.tpclient.get_home_timeline(
             max_results=10, 
-            since_id=self.bot.tpconf['newest_id'], 
+            since_id=self.bot.config.twitter.latest, 
             tweet_fields=['id','author_id'],
             expansions=['author_id']
         )
@@ -68,7 +63,7 @@ class ToofTwitter(commands.Cog):
             # Formats the link and sends it to the server's twitter channel
             username = user.username
             url = f"https://twitter.com/{username}/status/{tweet.id}"
-            await self.bot.get_channel(self.bot.serverconf['channels']['twitter']).send(url)
+            await self.bot.config.twitter.channel.send(url)
 
             # Likes the tweet if it isn't made by ToofBot
             if username != "ToofBot":
@@ -76,7 +71,7 @@ class ToofTwitter(commands.Cog):
 
         # Updates the config to make the newest_tweet match the timeline query
         # So future loops don't end up posting the same tweets
-        self.bot.tpconf['newest_id'] = timeline.meta['newest_id']
+        self.bot.config.twitter.latest = int(timeline.meta['newest_id'])
 
             
 def setup(bot:toof.ToofBot):

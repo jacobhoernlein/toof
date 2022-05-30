@@ -1,6 +1,7 @@
 """Moderation commands and features"""
 
 import asyncio
+import datetime as dt
 
 import discord
 from discord.ext import commands
@@ -37,39 +38,9 @@ class ToofMod(commands.Cog):
     def __init__(self, bot:toof.ToofBot):
         self.bot = bot
 
-        self.log_channel:discord.TextChannel = lambda ctx : discord.utils.find(
-            lambda c : c.id == self.bot.serverconf['channels']['log'],
-            ctx.guild.channels
-        )
-
-        self.mod_role:discord.Role = lambda ctx : discord.utils.find(
-            lambda r : r.id == self.bot.serverconf['roles']['mod'],
-            ctx.guild.roles
-        )
-
-        self.mute_role:discord.Role = lambda ctx : discord.utils.find(
-            lambda r : r.id == self.bot.serverconf['roles']['mute'],
-            ctx.guild.roles
-        )
-
-        self.member_role:discord.Role = lambda ctx : discord.utils.find(
-            lambda r : r.id == self.bot.serverconf['roles']['member'],
-            ctx.guild.roles
-        )
+    ### CHANNEL/LOG METHODS ###
 
     ### UTILITY METHODS ###
-
-    # Finds the mod role for the server based on the context
-    def get_mod_role(self, ctx:commands.Context) -> discord.Role:
-        """Gets the mod role based on the config file"""
-        role = discord.utils.find(lambda r: r.id == self.bot.serverconf["roles"]["mod"], ctx.guild.roles)
-        return role
-
-    # Finds the mute role for the server based on the context
-    def get_mute_role(self, ctx:commands.Context) -> discord.Role:
-        """Gets the mute role based on the config file"""
-        role = discord.utils.find(lambda r: r.id == self.bot.serverconf["roles"]["mute"], ctx.guild.roles)
-        return role
 
     # Adds reactions to a message based on a given time in seconds
     async def add_time_reactions(self, msg:discord.Message, seconds:int):
@@ -165,7 +136,7 @@ class ToofMod(commands.Cog):
             text=f"Message ID: {ctx.message.id} - {date} UTC"
         )
 
-        await self.log_channel(ctx).send(
+        await self.bot.config.log_channel.send(
             embed=embed
         )
 
@@ -175,8 +146,8 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def mute(self, ctx:commands.Context, target:discord.Member, time:float=5, unit:str="minutes"):
         """Mutes a member"""
-        mod_role = self.mod_role(ctx)
-        mute_role = self.mute_role(ctx)
+        mod_role = self.bot.config.mod_role
+        mute_role = self.bot.config.mute_role
         seconds = convert_time(time, unit.lower())
 
         if not has_mod_perms(ctx.author, mod_role):
@@ -197,8 +168,8 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def unmute(self, ctx:commands.Context, target:discord.Member):
         """Unmutes a member"""
-        mod_role = self.mod_role(ctx)
-        mute_role = self.mute_role(ctx)
+        mod_role = self.bot.config.mod_role
+        mute_role = self.bot.config.mute_role
         
         if not has_mod_perms(ctx.author, mod_role):
             await ctx.message.add_reaction("❌")
@@ -213,7 +184,7 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def kick(self, ctx:commands.Context, target:discord.Member, *, reason:str=None):
         """Kicks a member from the server"""
-        mod_role = self.mod_role(ctx)
+        mod_role = self.bot.config.mod_role
         
         if not has_mod_perms(ctx.author, mod_role):
             await ctx.message.add_reaction("❌")
@@ -227,7 +198,7 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def ban(self, ctx:commands.Context, target:discord.Member, *, reason:str=None):
         """Bans a member from the server"""
-        mod_role = self.mod_role(ctx)
+        mod_role = self.bot.config.mod_role
         
         if not has_mod_perms(ctx.author, mod_role):
             await ctx.message.add_reaction("❌")
@@ -241,7 +212,7 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def unban(self, ctx:commands.Context, target:discord.Member):
         """Unbans a member from the server"""
-        mod_role = self.mod_role()
+        mod_role = self.bot.config.mod_role
 
         if not has_mod_perms(ctx.author, mod_role):
             await ctx.message.add_reaction("❌")
@@ -254,29 +225,29 @@ class ToofMod(commands.Cog):
     ### EVENTS ###
 
     # Verifies users if they say "woof" in the welcome channel. Deletes the message.
+    # Only executes if the user has no roles.
     @commands.Cog.listener()
     async def on_message(self, message:discord.Message):
         """Verifies users"""
-        if message.author == self.bot.user or message.author.id == 243845903146811393:
-            return
-
-        member_role = self.member_role(message)
-        
-        if message.channel.id == self.bot.serverconf['channels']['welcome']:
+        if message.channel == self.bot.config.welcome_channel \
+        and len(message.author.roles) <= 1:
+            
+            await message.delete()
+            member_role = self.bot.config.member_role
+            
             if message.content == 'woof' and member_role not in message.author.roles:
                 await message.author.add_roles(member_role)
-            await message.delete()
-
+            
     # Snipes deleted messages and puts them into the mod log
     @commands.Cog.listener()
     async def on_message_delete(self, message:discord.Message):
         """Logs deleted messages"""
-        if message.channel.id == self.bot.serverconf['channels']['welcome']:
+        if message.author.id == self.bot.user.id \
+        or message.channel == self.bot.config.log_channel \
+        or (message.channel == self.bot.config.welcome_channel \
+        and len(message.author.roles) <= 1):
             return
-
-        if message.author.id == self.bot.user.id:
-            return
-
+        
         embed = discord.Embed(
             description=message.content,
             color=discord.Color.red()
@@ -296,7 +267,7 @@ class ToofMod(commands.Cog):
             text=f"Message ID: {message.id} - {date} UTC"
         )
 
-        await self.log_channel(message).send(
+        await self.bot.config.log_channel.send(
             embed=embed
         )
 
@@ -333,8 +304,38 @@ class ToofMod(commands.Cog):
             text=f"Message ID: {after.id} - {date} UTC"
         )
 
-        await self.log_channel(before).send(embed=embed)
+        await self.bot.config.log_channel.send(embed=embed)
 
+    # Kicks people for listening to Say So by Doja Cat
+    @commands.Cog.listener()
+    async def on_member_update(self, before:discord.Member, after:discord.Member):
+        for activity in after.activities:
+            if isinstance(activity, discord.Spotify):
+                if activity.title == "Say So" and activity.artist == "Doja Cat":
+                    
+                    reason = "Listening to Say So by Doja Cat"
+                    await after.send(f"You were kicked for {reason}")
+                    await after.kick(reason=reason)
+
+                    embed = discord.Embed(
+                        description=f"Kicked {after.mention} for reason: \"{reason}\".",
+                        color=discord.Color.red()
+                    )
+
+                    embed.set_author(
+                        name=f"{self.bot.user.name}#{self.bot.user.discriminator}:",
+                        icon_url=self.bot.user.avatar_url
+                    )
+
+                    date = dt.datetime.now().strftime("%m/%d/%Y %H:%M")
+                    embed.set_footer(
+                        text=f"{date} UTC"
+                    )
+
+                    await self.bot.config.log_channel.send(
+                        embed=embed
+                    )
+                    
 
 def setup(bot:toof.ToofBot):
     bot.add_cog(ToofMod(bot))

@@ -21,8 +21,8 @@ class ToofCommands(commands.Cog):
         self.bot = bot
         self.toofpics = []
 
-        for filename in os.listdir('./attachments/toofpics'):
-            self.toofpics.append(f'./attachments/toofpics/{filename}')
+        for filename in os.listdir('attachments/toofpics'):
+            self.toofpics.append(f'attachments/toofpics/{filename}')
 
     # Equivalent of "ping" command that other bots have
     # Gives the latency, and if the user is in a voice channel,
@@ -36,7 +36,7 @@ class ToofCommands(commands.Cog):
             if ctx.voice_client:
                 return
             voice = await ctx.author.voice.channel.connect()
-            source = FFmpegPCMAudio('./attachments/audio/thud.wav')
+            source = FFmpegPCMAudio('attachments/audio/thud.wav')
             voice.play(source)
             
     # Makes Toof curl up in the users lap.
@@ -76,31 +76,31 @@ class ToofCommands(commands.Cog):
             await ctx.message.add_reaction("❓")
             return
         
-        fileaddress = f"attachments/toofpics/{len(self.toofpics) + 1}.jpg"
+        fileaddress = f'attachments/toofpics/{len(self.toofpics) + 1}.jpg'
 
         file:discord.Attachment = ctx.message.attachments[0]
 
         # No conversion necessary, saves directly
-        if file.filename.endswith(".jpg"):
+        if file.filename.endswith('.jpg'):
             with open(fileaddress, 'wb') as fp:
                 await file.save(fp)
 
             self.toofpics.append(fileaddress)
             await ctx.message.add_reaction("👍")
         # Converts image from png to jpg, then saves it
-        elif file.filename.endswith(".png"):
+        elif file.filename.endswith('.png'):
             with open('temp.png', 'wb') as fp:
                 await file.save(fp)
 
             png = Image.open('temp.png')
-            jpg = png.convert("RGB")
+            jpg = png.convert('RGB')
             jpg.save(fileaddress)
             os.remove('temp.png')
 
             self.toofpics.append(fileaddress)
             await ctx.message.add_reaction("👍")
         # Converts HEIC to jpg, then saves it
-        elif file.filename.endswith(".heic"):
+        elif file.filename.endswith('.heic'):
             with open('temp.heic', 'wb') as fp:
                 await file.save(fp)
 
@@ -110,7 +110,7 @@ class ToofCommands(commands.Cog):
                 heif_file.mode,
                 heif_file.size,
                 heif_file.data,
-                "raw",
+                'raw',
             )
             image.save(fileaddress)
             os.remove('temp.heic')
@@ -169,14 +169,11 @@ class ToofCommands(commands.Cog):
             'toof, quote \"the person's name\" {the quote body}'
         """
 
-        quote_channel = discord.utils.find(
-            lambda c : c.id == self.bot.serverconf['channels']['quotes'],
-            ctx.guild.channels
-        )
+        quote_channel = self.bot.config.quotes.channel
 
         # If the command is a reply, adds the original message to the quoteboard
         if ctx.message.reference:
-            if ctx.message.reference.message_id in self.bot.quotes:
+            if ctx.message.reference.message_id in self.bot.config.quotes.list:
                 return
             
             message = ctx.message.reference.cached_message
@@ -202,7 +199,7 @@ class ToofCommands(commands.Cog):
                 date = message.created_at.strftime("%m/%d/%Y")
                 embed.set_footer(text=date)
 
-                self.bot.quotes.append(message.id)
+                self.bot.config.quotes.list.append(message.id)
 
             else:
                 await ctx.message.add_reaction("👎")
@@ -210,7 +207,7 @@ class ToofCommands(commands.Cog):
         # If it is not a reply, uses the normal functionality
         else:
             if member is None or quote is None:
-                await ctx.message.add_reaction("👎")
+                await ctx.message.add_reaction("❓")
                 return
             
             embed = discord.Embed(
@@ -240,7 +237,7 @@ class ToofCommands(commands.Cog):
             date = ctx.message.created_at.strftime("%m/%d/%Y")
             embed.set_footer(text=date)
 
-            self.bot.quotes.append(ctx.message.id)
+            self.bot.config.quotes.list.append(ctx.message.id)
 
         await quote_channel.send(
             content=f"{ctx.author.mention} submitted a quote:",
@@ -253,24 +250,18 @@ class ToofEvents(commands.Cog):
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         self.translator = deepl.Translator(os.getenv('DEEPLKEY'))
-        self.cachedmessages:list[discord.Message] = None
 
     # Starts loops
     @commands.Cog.listener()
     async def on_ready(self):
         self.change_status.start()
+        self.check_time.start()
 
     @commands.Cog.listener()
     async def on_member_join(self, member:discord.Member):
         """Sends a message to the welcome channel when a new member joins"""
-        welcome_channel = discord.utils.find(
-            lambda c : c.id == self.bot.serverconf['channels']['welcome'],
-            member.guild.channels
-        )
-        rules_channel = discord.utils.find(
-            lambda c : c.id == self.bot.serverconf['channels']['rules'],
-            member.guild.channels
-        )
+        welcome_channel = self.bot.config.welcome_channel
+        rules_channel = self.bot.config.rules_channel
 
         await welcome_channel.send(
             f"henlo {member.mention} welcime to server. read {rules_channel.mention} pls. say 'woof' when ur done 🐶"
@@ -282,7 +273,7 @@ class ToofEvents(commands.Cog):
         """Listens for specific messages"""
 
         # Ignores messages sent by the bot and messages sent in the welcome channel
-        if msg.author == self.bot.user or msg.channel.id == self.bot.serverconf['channels']['welcome']:
+        if msg.author == self.bot.user or msg.channel == self.bot.config.welcome_channel:
             return
         
         # Responds to messages with certain phrases
@@ -307,15 +298,6 @@ class ToofEvents(commands.Cog):
                 await msg.add_reaction("🇳")
                 await msg.add_reaction("🇬")            
         
-    # Kicks people for listening to Say So by Doja Cat
-    @commands.Cog.listener()
-    async def on_member_update(self, before:discord.Member, after:discord.Member):
-        for activity in after.activities:
-            if isinstance(activity, discord.Spotify):
-                if activity.title == "Say So" and activity.artist == "Doja Cat":
-                    await after.send("You were kicked for listening to Say So by Doja Cat")
-                    await after.kick(reason="Listening to Say So by Doja Cat")
-
     # Translates messages using DeepL API
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction:discord.Reaction, user:discord.Member):
@@ -338,8 +320,27 @@ class ToofEvents(commands.Cog):
     @tasks.loop(seconds=180)
     async def change_status(self):
         """Changes the status on a 180s loop"""
-        await self.bot.change_presence(activity=choice(self.bot.activities))
+        await self.bot.change_presence(activity=choice(self.bot.config.activities))
 
+    @tasks.loop(seconds=60)
+    async def check_time(self):
+        """Sends a good morning happy friday gif at a certain time"""
+        main_channel = self.bot.config.main_channel
+        
+        now = dt.datetime.now()
+        today = now.date()
+        time = now.time()
+
+        if time.hour == 0 and time.minute == 0:
+
+            if today.weekday() == 4:
+                await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
+            
+            bday = "05-29-2022"
+            bdate = dt.datetime.strptime(bday, "%m-%d-%Y")
+
+            if today.month == bdate.month and today.day == bdate.day:
+                await main_channel.send("TEST")
 
 def setup(bot:toof.ToofBot):
     bot.add_cog(ToofCommands(bot))
