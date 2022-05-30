@@ -1,5 +1,6 @@
 """Basic commands for Toof"""
 
+from ast import main
 import os
 import datetime as dt
 from random import choice
@@ -244,6 +245,56 @@ class ToofCommands(commands.Cog):
             embed=embed
         )
 
+    @commands.group(invoke_without_command=True)
+    async def bday(self, ctx:commands.Context, member:discord.Member=None):
+        """Looks up a members birthday. Or, use subcommands add and remove to manage your own"""
+
+        if isinstance(member, discord.Member):
+            for day, user_ids in self.bot.config.birthdays.items():
+                if member.id in user_ids:
+                    await ctx.send(f"woof! ({day})")
+                    return
+            await ctx.send("...")
+        if ctx.invoked_subcommand:
+            return
+
+    @bday.command()
+    async def add(self, ctx:commands.Context, birthday:str=None):
+        """Add your birthday to the list"""
+        # Checks to make sure a user hasn't already set their birthday
+        for birthday in self.bot.config.birthdays.keys():
+            if ctx.author.id in self.bot.config.birthdays[birthday]:
+               await ctx.message.add_reaction("👎")
+               return
+
+        try:
+            day = dt.datetime.strptime(birthday, "%m/%d/%Y")
+        # Formatting went wrong
+        except:
+            await ctx.message.add_reaction("❓")
+            await ctx.send("woof! (mm/dd/yyyy)")
+            return
+
+        day = day.strftime("%m/%d/%Y")
+
+        if day not in self.bot.config.birthdays.keys():
+            self.bot.config.birthdays[day] = []
+
+        self.bot.config.birthdays[day].append(ctx.author.id)
+        await ctx.message.add_reaction("👍")
+
+    @bday.command()
+    async def remove(self, ctx:commands.Context):
+        """Remove your birthday from the list"""
+        for day, user_ids in self.bot.config.birthdays.items():
+            if ctx.author.id in user_ids:
+                await ctx.message.add_reaction("👍")
+                self.bot.config.birthdays[day].remove(ctx.author.id)
+                
+                return
+        await ctx.message.add_reaction("❓")
+
+    
 class ToofEvents(commands.Cog):
     """Cog that contains basic event handling"""
 
@@ -322,25 +373,31 @@ class ToofEvents(commands.Cog):
         """Changes the status on a 180s loop"""
         await self.bot.change_presence(activity=choice(self.bot.config.activities))
 
+    # Checks if it's Friday or a Birthday
     @tasks.loop(seconds=60)
     async def check_time(self):
         """Sends a good morning happy friday gif at a certain time"""
         main_channel = self.bot.config.main_channel
-        
         now = dt.datetime.now()
-        today = now.date()
-        time = now.time()
-
-        if time.hour == 0 and time.minute == 0:
-
-            if today.weekday() == 4:
+        
+        # Automated messages will be sent at noon
+        if now.hour == 12 and now.minute == 00:
+            # Checks to see if it's Friday
+            if now.weekday() == 4:
                 await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
             
-            bday = "05-29-2022"
-            bdate = dt.datetime.strptime(bday, "%m-%d-%Y")
+            # Checks to see if it's anyone's birthday
+            date = now.strftime("%m/%d/%Y")
 
-            if today.month == bdate.month and today.day == bdate.day:
-                await main_channel.send("TEST")
+            if date in self.bot.config.birthdays.keys():
+                await main_channel.send("bday")
+                for user_id in self.bot.config.birthdays[date]:
+                    user = self.bot.get_user(user_id)
+
+                    await main_channel.send(
+                        f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
+                    )
+            
 
 def setup(bot:toof.ToofBot):
     bot.add_cog(ToofCommands(bot))

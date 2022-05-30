@@ -8,37 +8,11 @@ from discord.ext import commands
 
 import toof
 
-
-def has_mod_perms(mbr:discord.Member, mod_role:discord.Role) -> bool:
-    """Makes sure the given member has the given mod_role or is admin"""
-    if mod_role in mbr.roles or mbr.guild_permissions.administrator:
-        return True
-    return False
-
-def convert_time(duration:float, unit:str) -> int:
-    """Converts a duration and a unit to seconds"""
-
-    seconds = ["seconds", "second", "secs", "sec", "s"]
-    minutes = ["minutes", "minute", "mins", "min", "m"]
-    hours = ["hours", "hour", "h"]
-       
-    if unit in seconds:
-        multiplier = 1
-    if unit in minutes:
-        multiplier = 60
-    if unit in hours:
-        multiplier = 3600
-
-    return round(duration * multiplier)
-
-
 class ToofMod(commands.Cog):
     """Commands that implement moderation functionality"""
 
     def __init__(self, bot:toof.ToofBot):
         self.bot = bot
-
-    ### CHANNEL/LOG METHODS ###
 
     ### UTILITY METHODS ###
 
@@ -146,81 +120,79 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def mute(self, ctx:commands.Context, target:discord.Member, time:float=5, unit:str="minutes"):
         """Mutes a member"""
-        mod_role = self.bot.config.mod_role
-        mute_role = self.bot.config.mute_role
-        seconds = convert_time(time, unit.lower())
+        if self.bot.config.mod_role in ctx.author.roles:
+            mute_role = self.bot.config.mute_role
+            
+            seconds_aliases = ["seconds", "second", "secs", "sec", "s"]
+            minutes_alises = ["minutes", "minute", "mins", "min", "m"]
+            hours_aliases = ["hours", "hour", "h"]
+            
+            if unit in seconds_aliases:
+                multiplier = 1
+            if unit in minutes_alises:
+                multiplier = 60
+            if unit in hours_aliases:
+                multiplier = 3600
 
-        if not has_mod_perms(ctx.author, mod_role):
+            seconds = time * multiplier
+
+            if mute_role not in target.roles:
+                await target.add_roles(mute_role)
+                await ctx.message.add_reaction("👍")
+                await self.log_command(ctx, target, time, unit)
+                await self.add_time_reactions(ctx.message, seconds)
+            
+                await asyncio.sleep(seconds)
+                if mute_role in target.roles:
+                    await target.remove_roles(mute_role)
+        else:
             await ctx.message.add_reaction("❌")
-            return
-
-        if mute_role not in target.roles:
-            await target.add_roles(mute_role)
-            await ctx.message.add_reaction("👍")
-            await self.log_command(ctx, target, time, unit)
-            await self.add_time_reactions(ctx.message, seconds)
-        
-            await asyncio.sleep(seconds)
-            if mute_role in target.roles:
-                await target.remove_roles(mute_role)
 
     # Unmutes the target user if they are muted
     @commands.command()
     async def unmute(self, ctx:commands.Context, target:discord.Member):
         """Unmutes a member"""
-        mod_role = self.bot.config.mod_role
-        mute_role = self.bot.config.mute_role
-        
-        if not has_mod_perms(ctx.author, mod_role):
+        if self.bot.config.mod_role in ctx.author.roles:
+            mute_role = self.bot.config.mute_role
+            if mute_role in target.roles:
+                await target.remove_roles(mute_role)
+                await ctx.message.add_reaction("👍")
+                await self.log_command(ctx, target)
+        else:
             await ctx.message.add_reaction("❌")
-            return
-
-        if mute_role in target.roles:
-            await target.remove_roles(mute_role)
-            await ctx.message.add_reaction("👍")
-            await self.log_command(ctx, target)
 
     # Kicks that target user for the specified reason
     @commands.command()
     async def kick(self, ctx:commands.Context, target:discord.Member, *, reason:str=None):
         """Kicks a member from the server"""
-        mod_role = self.bot.config.mod_role
-        
-        if not has_mod_perms(ctx.author, mod_role):
+        if self.bot.config.mod_role in ctx.author.roles:
+            await target.kick(reason=reason)
+            await ctx.message.add_reaction("👍")
+            await self.log_command(ctx, target, reason=reason)
+        else:
             await ctx.message.add_reaction("❌")
-            return
-
-        await target.kick(reason=reason)
-        await ctx.message.add_reaction("👍")
-        await self.log_command(ctx, target, reason=reason)
         
     # Bans the target user for the specified reason
     @commands.command()
     async def ban(self, ctx:commands.Context, target:discord.Member, *, reason:str=None):
         """Bans a member from the server"""
-        mod_role = self.bot.config.mod_role
-        
-        if not has_mod_perms(ctx.author, mod_role):
+        if self.bot.config.mod_role in ctx.author.roles:
+            await target.ban(reason=reason, delete_message_days=0)
+            await ctx.message.add_reaction("👍")
+            await self.log_command(ctx, target, reason=reason)
+        else:
             await ctx.message.add_reaction("❌")
-            return
-
-        await target.ban(reason=reason, delete_message_days=0)
-        await ctx.message.add_reaction("👍")
-        await self.log_command(ctx, target, reason=reason)
         
     # Unbans the user if the user is banned
     @commands.command()
     async def unban(self, ctx:commands.Context, target:discord.Member):
         """Unbans a member from the server"""
-        mod_role = self.bot.config.mod_role
-
-        if not has_mod_perms(ctx.author, mod_role):
+        if self.bot.config.mod_role in ctx.author.roles:
+            await target.unban()
+            await ctx.message.add_reaction("👍")
+            await self.log_command(ctx, target)
+        else:
             await ctx.message.add_reaction("❌")
-            return
-
-        await target.unban()
-        await ctx.message.add_reaction("👍")
-        await self.log_command(ctx, target)
     
     ### EVENTS ###
 

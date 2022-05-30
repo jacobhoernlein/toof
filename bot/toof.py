@@ -45,6 +45,7 @@ class Config:
         self.quotes:QuotesConfig = None
         
         self.activities:list[discord.Activity] = None
+        self.birthdays:dict = None
 
     def load(self):
         """Loads the config from the config file"""
@@ -101,41 +102,50 @@ class Config:
             )
             self.activities.append(activity)
 
+        self.birthdays = {}
+        for day in config['birthdays'].keys():
+            self.birthdays[day] = config['birthdays'][day]
+
     def save(self):
         """Saves the configs to the config file file"""
         with open(self.__filename) as fp:
             config = json.load(fp)
         
-        config['server_id'] = self.server.id
+        # config['server_id'] = self.server.id
 
-        config['roles']['mod'] = self.mod_role.id
-        config['roles']['mute'] = self.mute_role.id
-        config['roles']['member'] = self.member_role.id
+        # config['roles']['mod'] = self.mod_role.id
+        # config['roles']['mute'] = self.mute_role.id
+        # config['roles']['member'] = self.member_role.id
         
-        config['channels']['log'] = self.log_channel.id
-        config['channels']['rules'] = self.rules_channel.id
-        config['channels']['welcome'] = self.welcome_channel.id
-        config['channels']['main'] = self.main_channel.id
+        # config['channels']['log'] = self.log_channel.id
+        # config['channels']['rules'] = self.rules_channel.id
+        # config['channels']['welcome'] = self.welcome_channel.id
+        # config['channels']['main'] = self.main_channel.id
 
-        config['channels']['twitter']['id'] = self.twitter.channel.id
+        # config['channels']['twitter']['id'] = self.twitter.channel.id
         config['channels']['twitter']['latest'] = self.twitter.latest
         
-        config['channels']['quotes']['id'] = self.quotes.channel.id
+        # config['channels']['quotes']['id'] = self.quotes.channel.id
         config['channels']['quotes']['list'] = self.quotes.list
         
-        watching = []
-        listening = []
-        playing = []
         for activity in self.activities:
-            if activity.type == discord.ActivityType.watching:
-                watching.append(activity.name)
-            elif activity.type == discord.ActivityType.listening:
-                listening.append(activity.name)
-            elif activity.type == discord.ActivityType.playing:
-                playing.append(activity.name)
-        config['activities']['watching'] = watching
-        config['activities']['listening'] = listening
-        config['activities']['playing'] = playing
+            # Adds new "watching" activities to the config
+            if activity.type == discord.ActivityType.watching \
+            and activity.name not in config['activities']['watching']:
+                config['activities']['watching'].append(activity.name)
+
+            # Adds new "listening" activities to the config
+            elif activity.type == discord.ActivityType.listening \
+            and activity.name not in config['activities']['listening']:
+                config['activities']['listening'].append(activity.name)
+
+            # Adds new "playing" activities to the config
+            elif activity.type == discord.ActivityType.playing \
+            and activity.name not in config['activities']['playing']:
+                config['activities']['playing'].append(activity.name)
+        
+        for day in self.birthdays.keys():
+            config['birthdays'][day] = self.birthdays[day]           
 
         with open(self.__filename, 'w') as fp:
             json.dump(config, fp, indent=4)
@@ -172,18 +182,20 @@ class ToofBot(commands.Bot):
         await self.close()
         print("*dies*")
 
-    # Cleans up then reloads all extensions
+    # Cleans up then reloads all extensions and configs
     async def toof_reload(self):
         """Reloads all extensions"""
         print("*rolls over*")
         await self.prep_close()
 
+        # Uloads loaded extensions
         loaded_extensions = []
         for extension in self.extensions:
             loaded_extensions.append(str(extension))
         for extension in loaded_extensions:
             self.unload_extension(extension)
 
+        # Loads all extensions in the cogs folder
         for filename in os.listdir(self.__cogfolder):
             if filename.endswith('.py'):
                 extension = f'{self.__cogfolder}.{filename[:-3]}'
@@ -192,4 +204,7 @@ class ToofBot(commands.Bot):
                     self.load_extension(extension)
                 except commands.NoEntryPointError:
                     print(f"No setup function for {extension}. Skipping")
+                
+        # Loads new configs if they've been added.
+        self.config.load()
                 

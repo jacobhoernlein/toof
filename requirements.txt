@@ -104,7 +104,7 @@ toml==0.10.2
 tweepy==4.10.0
 Twisted==20.3.0
 typing-extensions==4.2.0
-ubuntu-advantage-tools==27.7
+ubuntu-advantage-tools==27.8
 ubuntu-drivers-common==0.0.0
 ufw==0.36.1
 unattended-upgrades==0.1
