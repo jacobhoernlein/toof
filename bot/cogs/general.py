@@ -1,5 +1,6 @@
 """Basic commands for Toof"""
 
+import json
 import os
 import datetime as dt
 from random import choice
@@ -23,6 +24,9 @@ class ToofCommands(commands.Cog):
 
         for filename in os.listdir('attachments'):
             self.toofpics.append(f'attachments/{filename}')
+
+        with open("configs/birthdays.json") as fp:
+            self.birthdays:dict = json.load(fp)
 
     # Equivalent of "ping" command that other bots have
     # Gives the latency, and if the user is in a voice channel,
@@ -112,44 +116,6 @@ class ToofCommands(commands.Cog):
         else:
             await ctx.message.add_reaction("👎")
 
-    # Gives the user's age
-    @commands.command()
-    async def age(self, ctx: commands.Context, member:discord.User=None):
-        """Gives the members age (years, months, days)"""
-        if not member:
-            member = ctx.author
-        age:dt.timedelta = dt.datetime.now() - member.created_at
-
-        if age.days < 1:
-            years = 0
-            months = 0
-            days = 0
-        else:
-            years = age.days // 365
-            months = age.days % 365 // 30
-            days = age.days - (years * 365) - (months * 30)
-
-        message = ""
-        if years == 0:
-            message += "..."
-        else:
-            for i in range(years):
-                message += "woof "
-        message += "\n"
-        if months == 0:
-            message += "..."
-        else:
-            for i in range(months):
-                message += "bark "
-        message += "\n"
-        if days == 0:
-            message += "..."
-        else:
-            for i in range(days):
-                message += "ruff "
-        
-        await ctx.send(message)
-
     # Adds a message to the quoteboard
     @commands.command()
     async def quote(self, ctx: commands.Context, member:Union[discord.Member, str]=None, *, quote:str=None):
@@ -235,25 +201,54 @@ class ToofCommands(commands.Cog):
             embed=embed
         )
 
+    # Shows someone's birthday
     @commands.group(invoke_without_command=True)
     async def bday(self, ctx:commands.Context, member:discord.Member=None):
-        """Looks up a members birthday. Or, use subcommands add and remove to manage your own"""
+        """
+        Looks up a members birthday. Or, use subcommands to add or remove your own,
+        or to lookup someone's age on discord.
+        """
+        if member is None:
+            member = ctx.author
+        
+        for user_id, birthday in self.birthdays.items():
+            if str(member.id) == str(user_id):
+                age = dt.datetime.now() - dt.datetime.strptime(birthday, "%m/%d/%Y")
+                days = age.days
 
-        if isinstance(member, discord.Member):
-            for day, user_ids in self.bot.config.birthdays.items():
-                if member.id in user_ids:
-                    await ctx.send(f"woof! ({day})")
-                    return
-            await ctx.send("...")
-        if ctx.invoked_subcommand:
-            return
+                if days < 1:
+                    years = 0
+                    months = 0
+                    days = 0
+                else:
+                    years = int(days / 365.25)
+                    days -= int(years * 365.25)
+                    months = int(days / 30.437)
+                    days -= int(months * 30.437)
 
+                age_str = ""
+                if years > 0:
+                    age_str += f"{years}y"
+                    if months > 0 or days > 0:
+                        age_str += " "
+                if months > 0:
+                    age_str += f"{months}m"
+                    if days > 0:
+                        age_str += " "
+                age_str += f"{days}d"        
+                
+                await ctx.send(f"woof! ({birthday} -> {age_str}!)")
+        
+                return
+        await ctx.send("...")
+
+    # Adds someone's birthday to the config
     @bday.command(name="add")
     async def bday_add(self, ctx:commands.Context, birthday:str=None):
         """Add your birthday to the list"""
         # Checks to make sure a user hasn't already set their birthday
-        for birthday in self.bot.config.birthdays.keys():
-            if ctx.author.id in self.bot.config.birthdays[birthday]:
+        for user_id in self.birthdays.keys():
+            if str(ctx.author.id) == str(user_id):
                await ctx.message.add_reaction("👎")
                return
 
@@ -267,24 +262,62 @@ class ToofCommands(commands.Cog):
 
         day = day.strftime("%m/%d/%Y")
 
-        if day not in self.bot.config.birthdays.keys():
-            self.bot.config.birthdays[day] = []
+        self.birthdays[str(ctx.author.id)] = day
+        with open("configs/birthdays.json", "w") as fp:
+            json.dump(self.birthdays, fp, indent=4)
 
-        self.bot.config.birthdays[day].append(ctx.author.id)
         await ctx.message.add_reaction("👍")
 
+    # Removes someone's birthday from the config
     @bday.command()
     async def remove(self, ctx:commands.Context):
         """Remove your birthday from the list"""
-        for day, user_ids in self.bot.config.birthdays.items():
-            if ctx.author.id in user_ids:
+        for user_id in self.birthdays.keys():
+            if str(ctx.author.id) == str(user_id):
                 await ctx.message.add_reaction("👍")
-                self.bot.config.birthdays[day].remove(ctx.author.id)
+
+                del self.birthdays[str(user_id)]                
+                with open("configs/birthdays.json", "w") as fp:
+                    json.dump(self.birthdays, fp, indent=4)
                 
                 return
         await ctx.message.add_reaction("❓")
 
-    
+    # Shows someone's age on Discord
+    @bday.command(name="discord")
+    async def discord_age(self, ctx:commands.Context, member:discord.Member=None):
+        """Gives the members Discord age"""
+        if member is None:
+            member = ctx.author
+        
+        date_str = member.created_at.strftime("%m/%d/%Y")
+        
+        age = dt.datetime.now() - member.created_at
+        days = age.days
+
+        if days < 1:
+            years = 0
+            months = 0
+            days = 0
+        else:
+            years = int(days / 365.25)
+            days -= int(years * 365.25)
+            months = int(days / 30.437)
+            days -= int(months * 30.437)
+
+        age_str = ""
+        if years > 0:
+            age_str += f"{years}y"
+            if months > 0 or days > 0:
+                age_str += " "
+        if months > 0:
+            age_str += f"{months}m"
+            if days > 0:
+                age_str += " "
+        age_str += f"{days}d"        
+        
+        await ctx.send(f"woof! ({date_str} -> {age_str}!)")
+
 class ToofEvents(commands.Cog):
     """Cog that contains basic event handling"""
 

@@ -45,7 +45,6 @@ class Config:
         self.quotes:QuotesConfig = None
         
         self.activities:list[discord.Activity] = None
-        self.birthdays:dict = None
 
     def load(self):
         """Loads the config from the config file"""
@@ -82,71 +81,37 @@ class Config:
         self.twitter = TwitterConfig(self.__bot, config)
         self.quotes = QuotesConfig(self.__bot, config) 
 
-        self.activities = []
-        for name in config['activities']['watching']:
-            activity = discord.Activity(
+        self.activities = [
+            discord.Activity(
                 type=discord.ActivityType.watching,
-                name=name
-            )
-            self.activities.append(activity)
-        for name in config['activities']['listening']:
-            activity = discord.Activity(
+                name="the mailman"
+            ),
+            discord.Activity(
+                type=discord.ActivityType.watching,
+                name="you pee"
+            ),
+            discord.Activity(
                 type=discord.ActivityType.listening,
-                name=name
-            )
-            self.activities.append(activity)
-        for name in config['activities']['playing']:
-            activity = discord.Activity(
+                name="bees"
+            ),
+            discord.Activity(
+                type=discord.ActivityType.listening,
+                name="february face"
+            ),
+            discord.Activity(
                 type=discord.ActivityType.playing,
-                name=name
+                name="with a ball"
             )
-            self.activities.append(activity)
-
-        self.birthdays = {}
-        for day in config['birthdays'].keys():
-            self.birthdays[day] = config['birthdays'][day]
-
+        ]
+        
     def save(self):
         """Saves the configs to the config file file"""
         with open(self.__filename) as fp:
             config = json.load(fp)
         
-        # config['server_id'] = self.server.id
-
-        # config['roles']['mod'] = self.mod_role.id
-        # config['roles']['mute'] = self.mute_role.id
-        # config['roles']['member'] = self.member_role.id
-        
-        # config['channels']['log'] = self.log_channel.id
-        # config['channels']['rules'] = self.rules_channel.id
-        # config['channels']['welcome'] = self.welcome_channel.id
-        # config['channels']['main'] = self.main_channel.id
-
-        # config['channels']['twitter']['id'] = self.twitter.channel.id
         config['channels']['twitter']['latest'] = self.twitter.latest
-        
-        # config['channels']['quotes']['id'] = self.quotes.channel.id
         config['channels']['quotes']['list'] = self.quotes.list
         
-        for activity in self.activities:
-            # Adds new "watching" activities to the config
-            if activity.type == discord.ActivityType.watching \
-            and activity.name not in config['activities']['watching']:
-                config['activities']['watching'].append(activity.name)
-
-            # Adds new "listening" activities to the config
-            elif activity.type == discord.ActivityType.listening \
-            and activity.name not in config['activities']['listening']:
-                config['activities']['listening'].append(activity.name)
-
-            # Adds new "playing" activities to the config
-            elif activity.type == discord.ActivityType.playing \
-            and activity.name not in config['activities']['playing']:
-                config['activities']['playing'].append(activity.name)
-        
-        for day in self.birthdays.keys():
-            config['birthdays'][day] = self.birthdays[day]           
-
         with open(self.__filename, 'w') as fp:
             json.dump(config, fp, indent=4)
 

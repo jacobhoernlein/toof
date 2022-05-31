@@ -8,7 +8,7 @@ import toof
 # Initializes the bot using the ToofBot class
 # with every intent enabled.
 bot = toof.ToofBot(
-    configfile='config.json',
+    configfile='configs/server.json',
     cogfolder='cogs',
 
     command_prefix=("Toof, ", "toof, "),
@@ -39,6 +39,8 @@ async def rollover(ctx: commands.Context):
         await ctx.send("*rolls very hard*")
         await bot.toof_reload()
         await ctx.send("woof!")
+    else:
+        await ctx.send("*rolls*")
 
 # Runs the bot with the token from the environment variable
 bot.run(os.getenv('BOTTOKEN'))
