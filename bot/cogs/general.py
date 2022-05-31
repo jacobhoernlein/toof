@@ -15,6 +15,32 @@ import deepl
 
 import toof
 
+
+def days_to_age(days:int) -> str:
+    """Returns a formatted date based on the inputted days"""
+    if days < 1:
+            years = 0
+            months = 0
+            days = 0
+    else:
+        years = int(days / 365.25)
+        days -= int(years * 365.25)
+        months = int(days / 30.437)
+        days -= int(months * 30.437)
+
+    age_str = ""
+    if years > 0:
+        age_str += f"{years}y"
+        if months > 0 or days > 0:
+            age_str += " "
+    if months > 0:
+        age_str += f"{months}m"
+        if days > 0:
+            age_str += " "
+    age_str += f"{days}d"
+
+    return age_str
+
 class ToofCommands(commands.Cog):
     """Basic general commands for Toof"""
 
@@ -126,13 +152,10 @@ class ToofCommands(commands.Cog):
             'toof, quote \"the person's name\" {the quote body}'
         """
 
-        quote_channel = self.bot.config.quotes.channel
+        quote_channel = self.bot.config.quotes_channel
 
         # If the command is a reply, adds the original message to the quoteboard
         if ctx.message.reference:
-            if ctx.message.reference.message_id in self.bot.config.quotes.list:
-                return
-            
             message = ctx.message.reference.cached_message
 
             if message:
@@ -155,8 +178,6 @@ class ToofCommands(commands.Cog):
         
                 date = message.created_at.strftime("%m/%d/%Y")
                 embed.set_footer(text=date)
-
-                self.bot.config.quotes.list.append(message.id)
 
             else:
                 await ctx.message.add_reaction("👎")
@@ -194,8 +215,6 @@ class ToofCommands(commands.Cog):
             date = ctx.message.created_at.strftime("%m/%d/%Y")
             embed.set_footer(text=date)
 
-            self.bot.config.quotes.list.append(ctx.message.id)
-
         await quote_channel.send(
             content=f"{ctx.author.mention} submitted a quote:",
             embed=embed
@@ -205,39 +224,18 @@ class ToofCommands(commands.Cog):
     @commands.group(invoke_without_command=True)
     async def bday(self, ctx:commands.Context, member:discord.Member=None):
         """
-        Looks up a members birthday. Or, use subcommands to add or remove your own,
-        or to lookup someone's age on discord.
-        """
+        Looks up a members birthday. Or, use subcommands 
+        to add or remove your own, or to lookup someone's 
+        age on discord.
+        """            
         if member is None:
             member = ctx.author
         
         for user_id, birthday in self.birthdays.items():
             if str(member.id) == str(user_id):
                 age = dt.datetime.now() - dt.datetime.strptime(birthday, "%m/%d/%Y")
-                days = age.days
-
-                if days < 1:
-                    years = 0
-                    months = 0
-                    days = 0
-                else:
-                    years = int(days / 365.25)
-                    days -= int(years * 365.25)
-                    months = int(days / 30.437)
-                    days -= int(months * 30.437)
-
-                age_str = ""
-                if years > 0:
-                    age_str += f"{years}y"
-                    if months > 0 or days > 0:
-                        age_str += " "
-                if months > 0:
-                    age_str += f"{months}m"
-                    if days > 0:
-                        age_str += " "
-                age_str += f"{days}d"        
-                
-                await ctx.send(f"woof! ({birthday} -> {age_str}!)")
+            
+                await ctx.send(f"woof! ({birthday} -> {days_to_age(age.days)}!)")
         
                 return
         await ctx.send("...")
@@ -291,32 +289,9 @@ class ToofCommands(commands.Cog):
             member = ctx.author
         
         date_str = member.created_at.strftime("%m/%d/%Y")
+        age:dt.timedelta = dt.datetime.now() - member.created_at
         
-        age = dt.datetime.now() - member.created_at
-        days = age.days
-
-        if days < 1:
-            years = 0
-            months = 0
-            days = 0
-        else:
-            years = int(days / 365.25)
-            days -= int(years * 365.25)
-            months = int(days / 30.437)
-            days -= int(months * 30.437)
-
-        age_str = ""
-        if years > 0:
-            age_str += f"{years}y"
-            if months > 0 or days > 0:
-                age_str += " "
-        if months > 0:
-            age_str += f"{months}m"
-            if days > 0:
-                age_str += " "
-        age_str += f"{days}d"        
-        
-        await ctx.send(f"woof! ({date_str} -> {age_str}!)")
+        await ctx.send(f"woof! ({date_str} -> {days_to_age(age.days)}!)")
 
 class ToofEvents(commands.Cog):
     """Cog that contains basic event handling"""

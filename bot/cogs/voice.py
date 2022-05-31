@@ -191,7 +191,9 @@ class ToofVoice(commands.Cog):
         if not self.voice:
             return
 
-        if len(self.voice.channel.members) == 1:
+        if len(self.voice.channel.members) == 1 \
+        or (not self.voice.is_playing() \
+        and not self.voice.is_paused()):
             await self.voice.disconnect()
             
 

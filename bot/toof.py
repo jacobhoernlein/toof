@@ -15,14 +15,6 @@ class TwitterConfig:
         self.latest:int = config['channels']['twitter']['latest']
     
 
-class QuotesConfig:
-    """Class that includes a the quotes channel and list of message ids"""
-
-    def __init__(self, bot:"ToofBot", config:dict):
-        self.channel:discord.TextChannel = bot.get_channel(config['channels']['quotes']['id'])
-        self.list:list[int] = config['channels']['quotes']['list']
-
-
 class Config:
     """Class that includes information on Roles and Channels of a discord.Guild"""
 
@@ -40,9 +32,9 @@ class Config:
         self.rules_channel:discord.TextChannel = None
         self.welcome_channel:discord.TextChannel = None
         self.main_channel:discord.TextChannel = None
+        self.quotes_channel:discord.TextChannel = None
 
         self.twitter:TwitterConfig = None
-        self.quotes:QuotesConfig = None
         
         self.activities:list[discord.Activity] = None
 
@@ -78,9 +70,11 @@ class Config:
         self.main_channel = self.__bot.get_channel(
             config['channels']['main']
         )
+        self.quotes_channel = self.__bot.get_channel(
+            config['channels']['quotes']
+        )
         self.twitter = TwitterConfig(self.__bot, config)
-        self.quotes = QuotesConfig(self.__bot, config) 
-
+        
         self.activities = [
             discord.Activity(
                 type=discord.ActivityType.watching,
@@ -110,7 +104,6 @@ class Config:
             config = json.load(fp)
         
         config['channels']['twitter']['latest'] = self.twitter.latest
-        config['channels']['quotes']['list'] = self.quotes.list
         
         with open(self.__filename, 'w') as fp:
             json.dump(config, fp, indent=4)
