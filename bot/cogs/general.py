@@ -21,8 +21,8 @@ class ToofCommands(commands.Cog):
         self.bot = bot
         self.toofpics = []
 
-        for filename in os.listdir('attachments/toofpics'):
-            self.toofpics.append(f'attachments/toofpics/{filename}')
+        for filename in os.listdir('attachments'):
+            self.toofpics.append(f'attachments/{filename}')
 
     # Equivalent of "ping" command that other bots have
     # Gives the latency, and if the user is in a voice channel,
@@ -31,12 +31,7 @@ class ToofCommands(commands.Cog):
     async def speak(self, ctx: commands.Context):
         """Equivalent of \"ping\" command"""
         await ctx.send(f"woof. ({round(self.bot.latency * 1000)}ms)")
-        # Plays the vine thud sound effect if the user is in a voice channel
-        # if ctx.author.voice and not ctx.voice_client:
-        #     voice = await ctx.author.voice.channel.connect()
-        #     source = FFmpegPCMAudio('attachments/audio/thud.wav')
-        #     voice.play(source)
-            
+           
     # Makes Toof curl up in the users lap.
     # Shuts down the bot if called by Jacob
     @commands.command(aliases=["shutdown"])
@@ -72,7 +67,7 @@ class ToofCommands(commands.Cog):
             await ctx.message.add_reaction("❓")
             return
         
-        fileaddress = f'attachments/toofpics/{len(self.toofpics) + 1}.jpg'
+        fileaddress = f'attachments/{len(self.toofpics) + 1}.jpg'
 
         file:discord.Attachment = ctx.message.attachments[0]
 
