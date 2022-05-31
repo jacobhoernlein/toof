@@ -24,16 +24,16 @@ class ToofVoice(commands.Cog):
         self.check_voice.start()
 
     # Searches YouTube and returns a dict with URL and Title
-    def search_yt(self, url:str):
+    def search_yt(self, query:str):
         with ytdl.YoutubeDL(self.YDL_OPTIONS) as ydl:
             try: 
-                info = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]
+                info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
             except: 
                 return None
+            else:
+                return {'url': info['formats'][0]['url'], 'title': info['title']}
 
-        return {'url': info['formats'][0]['url'], 'title': info['title']}
-
-    # Plays the next song in the 
+    # Plays the next song in the queue
     def play_next(self, voice:discord.VoiceClient):
         if voice.is_playing():
             voice.stop()
@@ -41,18 +41,21 @@ class ToofVoice(commands.Cog):
         if len(self.music_queue) > 0:
             song = self.music_queue.pop(0)
 
-            voice.play(
-                FFmpegPCMAudio(
-                    song['url'],
-                    **self.FFMPEG_OPTIONS
-                ),
-                after=lambda e: self.play_next(voice)
-            )
+            try:
+                voice.play(
+                    FFmpegPCMAudio(
+                        song['url'],
+                        **self.FFMPEG_OPTIONS
+                    ),
+                    after=lambda error: self.play_next(voice)
+                )
+            except:
+                self.play_next(voice)
         
     # Joins the voice channel that the user is in
     # and plays some sick tunes
     @commands.command()
-    async def play(self, ctx: commands.Context, url:str=None):
+    async def play(self, ctx: commands.Context, *, search:str=None):
         """Resume paused music or add a YouTube video to the queue"""
         voice:discord.VoiceClient = ctx.voice_client
         if not voice:
@@ -62,8 +65,8 @@ class ToofVoice(commands.Cog):
                 await ctx.message.add_reaction("❓")
                 return    
 
-        if url:
-            song = self.search_yt(url)
+        if search:
+            song = self.search_yt(search)
             if song:
                 self.music_queue.append(song)
             else:

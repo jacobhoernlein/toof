@@ -32,12 +32,10 @@ class ToofCommands(commands.Cog):
         """Equivalent of \"ping\" command"""
         await ctx.send(f"woof. ({round(self.bot.latency * 1000)}ms)")
         # Plays the vine thud sound effect if the user is in a voice channel
-        if ctx.author.voice:
-            if ctx.voice_client:
-                return
-            voice = await ctx.author.voice.channel.connect()
-            source = FFmpegPCMAudio('attachments/audio/thud.wav')
-            voice.play(source)
+        # if ctx.author.voice and not ctx.voice_client:
+        #     voice = await ctx.author.voice.channel.connect()
+        #     source = FFmpegPCMAudio('attachments/audio/thud.wav')
+        #     voice.play(source)
             
     # Makes Toof curl up in the users lap.
     # Shuts down the bot if called by Jacob
