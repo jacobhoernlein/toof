@@ -10,11 +10,9 @@ from PIL import Image
 import pillow_heif
 import discord
 from discord.ext import commands, tasks
-from discord import FFmpegPCMAudio
 import deepl
 
 import toof
-
 
 def days_to_age(days:int) -> str:
     """Returns a formatted date based on the inputted days"""
@@ -51,7 +49,7 @@ class ToofCommands(commands.Cog):
         for filename in os.listdir('attachments'):
             self.toofpics.append(f'attachments/{filename}')
 
-        with open("configs/birthdays.json") as fp:
+        with open('configs/birthdays.json') as fp:
             self.birthdays:dict = json.load(fp)
 
     # Equivalent of "ping" command that other bots have
@@ -299,6 +297,9 @@ class ToofEvents(commands.Cog):
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         self.translator = deepl.Translator(os.getenv('DEEPLKEY'))
+        
+        with open('configs/birthdays.json') as fp:
+            self.birthdays:dict = json.load(fp)
 
     # Starts loops
     @commands.Cog.listener()
@@ -386,16 +387,13 @@ class ToofEvents(commands.Cog):
             
             # Checks to see if it's anyone's birthday
             date = now.strftime("%m/%d/%Y")
-
-            if date in self.bot.config.birthdays.keys():
-                await main_channel.send("bday")
-                for user_id in self.bot.config.birthdays[date]:
-                    user = self.bot.get_user(user_id)
-
-                    await main_channel.send(
-                        f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
-                    )
             
+            for user_id, birthday in self.birthdays.items():
+                if date == birthday:
+                    user = self.bot.get_user(user_id)
+                    await main_channel.send(
+                         f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
+                    )
 
 def setup(bot:toof.ToofBot):
     bot.add_cog(ToofCommands(bot))

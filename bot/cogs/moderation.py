@@ -24,17 +24,17 @@ class ToofMod(commands.Cog):
             '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'
         ]
         
-        hours = seconds // 3600
-        seconds -= hours * 3600
-        minutes = seconds // 60
-        seconds -= minutes * 60
+        hours = int(seconds / 3600)
+        seconds = int(seconds - (hours * 3600))
+        minutes = int(seconds / 60)
+        seconds = int(seconds - (minutes * 60))
 
         if hours != 0:
             hours_digits = []
 
             while hours != 0:
-                digit = hours % 10
-                hours = hours // 10
+                digit = int(hours % 10)
+                hours = int(hours / 10)
                 hours_digits.insert(0, digit)
 
             for digit in hours_digits:
@@ -46,8 +46,8 @@ class ToofMod(commands.Cog):
             minute_digits = []
 
             while minutes != 0:
-                digit = minutes % 10
-                minutes = minutes // 10
+                digit = int(minutes % 10)
+                minutes = int(minutes / 10)
                 minute_digits.insert(0, digit)
 
             for digit in minute_digits:
@@ -59,8 +59,8 @@ class ToofMod(commands.Cog):
             second_digits = []
 
             while seconds != 0:
-                digit = seconds % 10
-                seconds = seconds // 10
+                digit = int(seconds % 10)
+                seconds = int(seconds / 10)
                 second_digits.insert(0, digit)
 
             for digit in second_digits:
@@ -123,28 +123,33 @@ class ToofMod(commands.Cog):
         if self.bot.config.mod_role in ctx.author.roles:
             mute_role = self.bot.config.mute_role
             
+            if mute_role in target.roles:
+                return
+
             seconds_aliases = ["seconds", "second", "secs", "sec", "s"]
             minutes_alises = ["minutes", "minute", "mins", "min", "m"]
             hours_aliases = ["hours", "hour", "h"]
             
             if unit in seconds_aliases:
                 multiplier = 1
-            if unit in minutes_alises:
+            elif unit in minutes_alises:
                 multiplier = 60
-            if unit in hours_aliases:
+            elif unit in hours_aliases:
                 multiplier = 3600
+            else:
+                await ctx.message.add_reaction("❓")
+                return
 
             seconds = time * multiplier
 
-            if mute_role not in target.roles:
-                await target.add_roles(mute_role)
-                await ctx.message.add_reaction("👍")
-                await self.log_command(ctx, target, time, unit)
-                await self.add_time_reactions(ctx.message, seconds)
-            
-                await asyncio.sleep(seconds)
-                if mute_role in target.roles:
-                    await target.remove_roles(mute_role)
+            await target.add_roles(mute_role)
+            await ctx.message.add_reaction("👍")
+            await self.log_command(ctx, target, time, unit)
+            await self.add_time_reactions(ctx.message, seconds)
+        
+            await asyncio.sleep(seconds)
+            if mute_role in target.roles:
+                await target.remove_roles(mute_role)
         else:
             await ctx.message.add_reaction("❌")
 
