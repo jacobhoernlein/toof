@@ -43,4 +43,4 @@ async def rollover(ctx: commands.Context):
         await ctx.send("*rolls*")
 
 # Runs the bot with the token from the environment variable
-bot.run(os.getenv('BOTTOKEN'))
+bot.run(os.getenv('TESTBOTTOKEN'))
