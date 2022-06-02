@@ -65,9 +65,9 @@ class ToofTwitter(commands.Cog):
             url = f"https://twitter.com/{username}/status/{tweet.id}"
             await self.bot.config.twitter.channel.send(url)
 
-            # Likes the tweet if it isn't made by ToofBot
-            if username != "ToofBot":
-                await self.tpclient.like(tweet.id)
+            # # Likes the tweet if it isn't made by ToofBot
+            # if username != "ToofBot":
+            #     await self.tpclient.like(tweet.id)
 
         # Updates the config to make the newest_tweet match the timeline query
         # So future loops don't end up posting the same tweets
