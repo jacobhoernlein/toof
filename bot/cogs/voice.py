@@ -20,11 +20,6 @@ class ToofVoice(commands.Cog):
         self.YDL_OPTIONS =  {'format': 'bestaudio', 'noplaylist': 'True'}
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
-    # Starts loops
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.check_voice.start()
-
     @commands.command(aliases=["uptime"])
     async def voicetime(self, ctx:commands.Context):
         """Checks how long you've been in a voice channel"""
@@ -62,8 +57,7 @@ class ToofVoice(commands.Cog):
     def play_song(self):
         if len(self.music_queue) > 0:
             song = self.music_queue.pop(0)
-            self.current_song = song
-
+        
             self.voice.play(
                 FFmpegPCMAudio(
                     song['url'],
@@ -89,65 +83,82 @@ class ToofVoice(commands.Cog):
     @commands.command()
     async def play(self, ctx: commands.Context, *, search:str=None):
         """Resume paused music or add a YouTube video to the queue"""
-        if not self.voice:
-            if ctx.author.voice and search:
-                self.voice = await ctx.author.voice.channel.connect()
+        if not ctx.author.voice:
+            await ctx.message.add_reaction("❓")
+            return
+
+        if self.voice:
+            if search:
+                pass
+            elif self.voice.is_paused():
+                await ctx.message.add_reaction("▶️")
+                self.voice.resume()
+                return
             else:
                 await ctx.message.add_reaction("❓")
-                return    
-
-        if search:
-            song = self.search_yt(search)
-            if song is not None:
-                self.music_queue.append(song)
+                return
+        else:
+            if search:
+                self.voice = await ctx.author.voice.channel.connect()
             else:
                 await ctx.message.add_reaction("❓")
                 return
 
-            if not self.voice.is_playing():
-                await ctx.message.add_reaction("🎵")
-                self.play_song() 
-            else:
-                await ctx.message.add_reaction("👍")
-
-        elif self.voice.is_paused():
-            await ctx.message.add_reaction("▶️")
-            self.voice.resume()
-            return
-        
+        song = self.search_yt(search)
+        if song is not None:
+            self.music_queue.append(song)
+            self.play_song()
         else:
             await ctx.message.add_reaction("❓")
-        
+
     # Pauses the audio if there is any playing    
     @commands.command()
     async def pause(self, ctx: commands.Context):
         """Pause whatever Toof is saying"""
         if not self.voice or not ctx.author.voice:
             await ctx.message.add_reaction("❓")
-        elif self.voice.is_playing():
-            await ctx.message.add_reaction("⏸️")
-            self.voice.pause()
+            return
+        
+        mod_role = self.bot.config.mod_role
+        mod_in_channel = False
+        for member in self.voice.channel.members:
+            if mod_role in member.roles:
+                mod_in_channel = True
+        
+        if not mod_in_channel or mod_role in ctx.author.roles:
+            if self.voice.is_playing():
+                await ctx.message.add_reaction("⏸️")
+                self.voice.pause()
+        else:
+            await ctx.message.add_reaction("❌")
             
     # Skips the current song if the user has mod perms
     @commands.command()
     async def skip(self, ctx:commands.Context, number:int=None):
         """Skips to the next song or removes the specified song in the queue"""
-        if self.bot.config.mod_role in ctx.author.roles:
-            if self.voice:
-                if number is not None:
-                    try:
-                        self.music_queue.pop(number - 1)
-                    except:
-                        await ctx.message.add_reaction("❓")
-                    else:
-                        await ctx.message.add_reaction("👍")
+        if not self.voice or not ctx.author.voice:
+            await ctx.message.add_reaction("❓")
+            return
+        
+        mod_role = self.bot.config.mod_role
+        mod_in_channel = False
+        for member in self.voice.channel.members:
+            if mod_role in member.roles:
+                mod_in_channel = True
+        
+        if not mod_in_channel or mod_role in ctx.author.roles:
+            if number is not None:
+                try:
+                    self.music_queue.pop(number - 1)
+                except:
+                    await ctx.message.add_reaction("❓")
                 else:
-                    await ctx.message.add_reaction("⏩")
-                    if self.voice.is_playing():
-                        self.voice.stop()
-                    self.play_song()
+                    await ctx.message.add_reaction("👍")
             else:
-                await ctx.message.add_reaction("❓")
+                await ctx.message.add_reaction("⏩")
+                if self.voice.is_playing():
+                    self.voice.stop()
+                self.play_song()
         else:
             await ctx.message.add_reaction("❌")
 
@@ -155,12 +166,19 @@ class ToofVoice(commands.Cog):
     @commands.command()
     async def leave(self, ctx: commands.Context):
         """Removes Toof from the voice chat and clears the queue"""
-        if self.bot.config.mod_role in ctx.author.roles:
-            if self.voice:
-                await self.voice.disconnect()
-                await ctx.message.add_reaction("👍")
-            else:
-                await ctx.message.add_reaction("❓")
+        if not self.voice or not ctx.author.voice:
+            await ctx.message.add_reaction("❓")
+            return
+        
+        mod_role = self.bot.config.mod_role
+        mod_in_channel = False
+        for member in self.voice.channel.members:
+            if mod_role in member.roles:
+                mod_in_channel = True
+        
+        if not mod_in_channel or mod_role in ctx.author.roles:
+            await self.voice.disconnect()
+            await ctx.message.add_reaction("👍")
         else:
             await ctx.message.add_reaction("❌")
 
@@ -183,19 +201,7 @@ class ToofVoice(commands.Cog):
         if self.voice:
             if len(self.voice.channel.members) == 1:
                 await self.voice.disconnect()
-                
-    # Checks all voice connections and disconnects
-    # If there aren't any users
-    @tasks.loop(seconds=15)
-    async def check_voice(self):
-        if not self.voice:
-            return
-
-        if len(self.voice.channel.members) == 1 \
-        or (not self.voice.is_playing() \
-        and not self.voice.is_paused()):
-            await self.voice.disconnect()
-            
+                            
 
 def setup(bot:commands.Bot):
     bot.add_cog(ToofVoice(bot))
