@@ -3,7 +3,7 @@
 import datetime as dt
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord import FFmpegPCMAudio
 import youtube_dl as ytdl
 
