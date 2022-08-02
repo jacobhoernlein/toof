@@ -42,7 +42,7 @@ class ToofTwitter(commands.Cog):
         """
         # Gets timeline using the Tweepy client established in __init__
         timeline = await self.tpclient.get_home_timeline(
-            max_results=10, 
+            max_results=100, 
             since_id=self.bot.config.twitter.latest, 
             tweet_fields=['id','author_id'],
             expansions=['author_id']
@@ -56,7 +56,8 @@ class ToofTwitter(commands.Cog):
         for user in timeline.includes['users']:
             users[str(user.id)] = user
         
-        for tweet in timeline.data:
+        # Print Tweets in reverse order
+        for tweet in reversed(timeline.data):
             # Gets the user object corresponding to the tweet from the dictionary
             user = users[str(tweet.author_id)]
             
