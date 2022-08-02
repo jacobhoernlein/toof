@@ -7,12 +7,12 @@ import discord
 from discord.ext import commands
 
 
-class TwitterConfig:
-    """Class that includes the Twitter channel and lastest Tweet ID"""
+# class TwitterConfig:
+#     """Class that includes the Twitter channel and lastest Tweet ID"""
 
-    def __init__(self, bot:"ToofBot", config:dict):
-        self.channel:discord.TextChannel = bot.get_channel(config['channels']['twitter']['id'])
-        self.latest:int = config['channels']['twitter']['latest']
+#     def __init__(self, bot:"ToofBot", config:dict):
+#         self.channel:discord.TextChannel = bot.get_channel(config['channels']['twitter']['id'])
+#         self.latest:int = config['channels']['twitter']['latest']
     
 
 class Config:
@@ -34,7 +34,7 @@ class Config:
         self.main_channel:discord.TextChannel = None
         self.quotes_channel:discord.TextChannel = None
 
-        self.twitter:TwitterConfig = None
+        # self.twitter:TwitterConfig = None
         
         self.activities:list[discord.Activity] = None
 
@@ -73,7 +73,7 @@ class Config:
         self.quotes_channel = self.__bot.get_channel(
             config['channels']['quotes']
         )
-        self.twitter = TwitterConfig(self.__bot, config)
+        # self.twitter = TwitterConfig(self.__bot, config)
         
         self.activities = [
             discord.Activity(
@@ -98,15 +98,15 @@ class Config:
             )
         ]
         
-    def save(self):
-        """Saves the configs to the config file file"""
-        with open(self.__filename) as fp:
-            config = json.load(fp)
+    # def save(self):
+    #     """Saves the configs to the config file file"""
+    #     with open(self.__filename) as fp:
+    #         config = json.load(fp)
         
-        config['channels']['twitter']['latest'] = self.twitter.latest
+    #     config['channels']['twitter']['latest'] = self.twitter.latest
         
-        with open(self.__filename, 'w') as fp:
-            json.dump(config, fp, indent=4)
+    #     with open(self.__filename, 'w') as fp:
+    #         json.dump(config, fp, indent=4)
 
 
 class ToofBot(commands.Bot):
@@ -129,7 +129,7 @@ class ToofBot(commands.Bot):
     # Preps the bot by saving the last tweet and disconnecting from voice
     async def prep_close(self):
         """Saves the last Tweet and disconnects voice clients"""
-        self.config.save()
+        # self.config.save()
         for voice in self.voice_clients:
             await voice.disconnect()    
 
