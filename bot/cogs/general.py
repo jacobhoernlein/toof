@@ -219,7 +219,7 @@ class ToofCommands(commands.Cog):
         )
 
     # Shows someone's birthday
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, aliases=["birthday"])
     async def bday(self, ctx:commands.Context, member:discord.Member=None):
         """
         Looks up a members birthday. Or, use subcommands 
@@ -238,7 +238,7 @@ class ToofCommands(commands.Cog):
                 return
         await ctx.send("...")
 
-    # Adds someone's birthday to the config
+    # Adds someone's birthday to the birthdays file
     @bday.command(name="add")
     async def bday_add(self, ctx:commands.Context, birthday:str=None):
         """Add your birthday to the list"""
@@ -251,14 +251,15 @@ class ToofCommands(commands.Cog):
         try:
             day = dt.datetime.strptime(birthday, "%m/%d/%Y")
         # Formatting went wrong
-        except:
+        except ValueError:
             await ctx.message.add_reaction("❓")
             await ctx.send("woof! (mm/dd/yyyy)")
             return
 
+        # Converts day from datetime object to string, stores in library
         day = day.strftime("%m/%d/%Y")
-
         self.birthdays[str(ctx.author.id)] = day
+
         with open("configs/birthdays.json", "w") as fp:
             json.dump(self.birthdays, fp, indent=4)
 
@@ -266,7 +267,7 @@ class ToofCommands(commands.Cog):
 
     # Removes someone's birthday from the config
     @bday.command()
-    async def remove(self, ctx:commands.Context):
+    async def bday_remove(self, ctx:commands.Context):
         """Remove your birthday from the list"""
         for user_id in self.birthdays.keys():
             if str(ctx.author.id) == str(user_id):
