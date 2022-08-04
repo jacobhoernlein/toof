@@ -1,3 +1,5 @@
+"""Runs the main toof on the main server."""
+
 import os
 
 import discord
@@ -8,7 +10,7 @@ import toof
 # Initializes the bot using the ToofBot class
 # with every intent enabled.
 bot = toof.ToofBot(
-    configfile='configs/server.json',
+    configfile='configs/main.json',
     cogfolder='cogs',
 
     command_prefix=("Toof, ", "toof, "),
