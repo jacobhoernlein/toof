@@ -120,7 +120,8 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def mute(self, ctx:commands.Context, target:discord.Member, time:float=5, unit:str="minutes"):
         """Mutes a member"""
-        if self.bot.config.mod_role in ctx.author.roles:
+        if self.bot.config.mod_role in ctx.author.roles \
+        or ctx.author.guild_permissions.administrator:
             mute_role = self.bot.config.mute_role
             
             if mute_role in target.roles:
@@ -157,7 +158,8 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def unmute(self, ctx:commands.Context, target:discord.Member):
         """Unmutes a member"""
-        if self.bot.config.mod_role in ctx.author.roles:
+        if self.bot.config.mod_role in ctx.author.roles \
+        or ctx.author.guild_permissions.administrator:
             mute_role = self.bot.config.mute_role
             if mute_role in target.roles:
                 await target.remove_roles(mute_role)
@@ -170,7 +172,8 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def kick(self, ctx:commands.Context, target:discord.Member, *, reason:str=None):
         """Kicks a member from the server"""
-        if self.bot.config.mod_role in ctx.author.roles:
+        if self.bot.config.mod_role in ctx.author.roles \
+        or ctx.author.guild_permissions.administrator:
             await target.kick(reason=reason)
             await ctx.message.add_reaction("👍")
             await self.log_command(ctx, target, reason=reason)
@@ -181,7 +184,8 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def ban(self, ctx:commands.Context, target:discord.Member, *, reason:str=None):
         """Bans a member from the server"""
-        if self.bot.config.mod_role in ctx.author.roles:
+        if self.bot.config.mod_role in ctx.author.roles \
+        or ctx.author.guild_permissions.administrator:
             await target.ban(reason=reason, delete_message_days=0)
             await ctx.message.add_reaction("👍")
             await self.log_command(ctx, target, reason=reason)
@@ -192,7 +196,8 @@ class ToofMod(commands.Cog):
     @commands.command()
     async def unban(self, ctx:commands.Context, target:discord.Member):
         """Unbans a member from the server"""
-        if self.bot.config.mod_role in ctx.author.roles:
+        if self.bot.config.mod_role in ctx.author.roles \
+        or ctx.author.guild_permissions.administrator:
             await target.unban()
             await ctx.message.add_reaction("👍")
             await self.log_command(ctx, target)
