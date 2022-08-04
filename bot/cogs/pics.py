@@ -57,17 +57,27 @@ class ToofPics(commands.Cog):
 
     # Adds a toofpic to the folder
     @pic.command(name="add", hidden=True)
-    async def pic_add(self, ctx: commands.Context):
+    async def pic_add(self, ctx: commands.Context, rarity:str=None):
         """Adds a picture to toof pics folder"""
         if ctx.author.id != 243845903146811393:
             await ctx.message.add_reaction("❌")
             return
 
-        if not ctx.message.attachments:
+        if not ctx.message.attachments or rarity is None:
             await ctx.message.add_reaction("❓")
             return
         
-        fileaddress = f'attachments/{len(self.toofpics) + 1}.jpg'
+        pic_count = len(self.toofpics['common']) + len(self.toofpics['rare']) + len(self.toofpics['legendary'])
+
+        if rarity.lower() == "common":
+            fileaddress = f'attachments/{pic_count + 1}.jpg'
+            self.toofpics['common'].append(fileaddress)
+        elif rarity.lower() == "rare":
+            fileaddress = f'attachments/{pic_count + 1}r.jpg'
+            self.toofpics['rare'].append(fileaddress)
+        elif rarity.lower() == "legendary":
+            fileaddress = f'attachments/{pic_count + 1}l.jpg'
+            self.toofpics['legendary'].append(fileaddress)
 
         file:discord.Attachment = ctx.message.attachments[0]
 
@@ -76,7 +86,6 @@ class ToofPics(commands.Cog):
             with open(fileaddress, 'wb') as fp:
                 await file.save(fp)
 
-            self.toofpics.append(fileaddress)
             await ctx.message.add_reaction("👍")
         # Converts image from png to jpg, then saves it
         elif file.filename.lower().endswith('.png'):
@@ -88,7 +97,6 @@ class ToofPics(commands.Cog):
             jpg.save(fileaddress)
             os.remove('temp.png')
 
-            self.toofpics.append(fileaddress)
             await ctx.message.add_reaction("👍")
         # Converts HEIC to jpg, then saves it
         elif file.filename.lower().endswith('.heic'):
@@ -106,7 +114,6 @@ class ToofPics(commands.Cog):
             image.save(fileaddress)
             os.remove('temp.heic')
 
-            self.toofpics.append(fileaddress)
             await ctx.message.add_reaction("👍")
         # Can't convert other formats
         else:
