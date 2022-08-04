@@ -6,8 +6,6 @@ import datetime as dt
 from random import choice
 from typing import Union
 
-from PIL import Image
-import pillow_heif
 import discord
 from discord.ext import commands, tasks
 import deepl
@@ -44,11 +42,7 @@ class ToofCommands(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.toofpics = []
-
-        for filename in os.listdir('attachments'):
-            self.toofpics.append(f'attachments/{filename}')
-
+        
         with open('configs/birthdays.json') as fp:
             self.birthdays:dict = json.load(fp)
 
@@ -73,72 +67,6 @@ class ToofCommands(commands.Cog):
         else:
             await ctx.send(f"*snuggles in {ctx.author.display_name}'s lap*")
 
-    # Sends a random picture of Toof
-    @commands.group(aliases=["picture"])
-    async def pic(self, ctx: commands.Context):
-        """Sends a random toofpic"""
-        if not ctx.invoked_subcommand: 
-            filename = choice(self.toofpics)
-            with open(filename, 'rb') as fp:
-                pic = discord.File(fp, filename=filename)
-                await ctx.send(file=pic)
-
-    # Adds a toofpic to the folder
-    @pic.command(name="add", hidden=True)
-    async def pic_add(self, ctx: commands.Context):
-        """Adds a picture to toof pics folder"""
-        if ctx.author.id != 243845903146811393:
-            await ctx.message.add_reaction("❌")
-            return
-
-        if not ctx.message.attachments:
-            await ctx.message.add_reaction("❓")
-            return
-        
-        fileaddress = f'attachments/{len(self.toofpics) + 1}.jpg'
-
-        file:discord.Attachment = ctx.message.attachments[0]
-
-        # No conversion necessary, saves directly
-        if file.filename.lower().endswith('.jpg'):
-            with open(fileaddress, 'wb') as fp:
-                await file.save(fp)
-
-            self.toofpics.append(fileaddress)
-            await ctx.message.add_reaction("👍")
-        # Converts image from png to jpg, then saves it
-        elif file.filename.lower().endswith('.png'):
-            with open('temp.png', 'wb') as fp:
-                await file.save(fp)
-
-            png = Image.open('temp.png')
-            jpg = png.convert('RGB')
-            jpg.save(fileaddress)
-            os.remove('temp.png')
-
-            self.toofpics.append(fileaddress)
-            await ctx.message.add_reaction("👍")
-        # Converts HEIC to jpg, then saves it
-        elif file.filename.lower().endswith('.heic'):
-            with open('temp.heic', 'wb') as fp:
-                await file.save(fp)
-
-            with open('temp.heic', 'rb') as fp:    
-                heif_file = pillow_heif.open_heif(fp)
-            image = Image.frombytes(
-                heif_file.mode,
-                heif_file.size,
-                heif_file.data,
-                'raw',
-            )
-            image.save(fileaddress)
-            os.remove('temp.heic')
-
-            self.toofpics.append(fileaddress)
-            await ctx.message.add_reaction("👍")
-        # Can't convert other formats
-        else:
-            await ctx.message.add_reaction("👎")
 
     # Adds a message to the quoteboard
     @commands.command()
