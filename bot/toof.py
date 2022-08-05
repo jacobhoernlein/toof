@@ -74,7 +74,8 @@ class Config:
             config['channels']['quotes']
         )
         # self.twitter = TwitterConfig(self.__bot, config)
-        
+
+
         self.activities = [
             discord.Activity(
                 type=discord.ActivityType.watching,

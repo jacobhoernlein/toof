@@ -46,7 +46,8 @@ class ToofTwitter(commands.Cog):
         ] \
         or msg.author == self.bot.user \
         or randint(1, 4096) != 69 \
-        or not msg.content:
+        or not msg.content \
+        or msg.guild != self.bot.config.server:
             return
         
         author_name = msg.author.display_name
