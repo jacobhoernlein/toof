@@ -257,7 +257,7 @@ class ToofEvents(commands.Cog):
         
         # Logs DMs
         if isinstance(msg.channel, discord.DMChannel):
-            dm_channel = self.bot.get_channel(978153341320310784)
+            dm_channel = self.bot.get_channel(1006036934075891732)
 
             files = []
             if msg.attachments:
