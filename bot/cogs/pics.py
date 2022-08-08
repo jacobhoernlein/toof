@@ -40,7 +40,6 @@ class ToofPics(commands.Cog):
         if random.randint(1, 256) == 1:
             filename = random.choice(self.toofpics['legendary'])
             content = f"⭐ **LEGENDARY** ⭐ (#{filename[12:-4]})"
-
         elif random.randint(1, 32) == 1:
             filename = random.choice(self.toofpics['rare'])
             content = f"💎 *Rare* 💎 (#{filename[12:-4]})"

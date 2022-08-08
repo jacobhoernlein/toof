@@ -255,6 +255,20 @@ class ToofEvents(commands.Cog):
         if msg.author == self.bot.user or msg.channel == self.bot.config.welcome_channel:
             return
         
+        # Logs DMs
+        if isinstance(msg.channel, discord.DMChannel):
+            dm_channel = self.bot.get_channel(978153341320310784)
+
+            files = []
+            if msg.attachments:
+                for attachment in msg.attachments:
+                    files.append(await attachment.to_file())
+                
+            await dm_channel.send(
+                f"{str(msg.author)}: {msg.content}",
+                files=files
+            )
+
         # Responds to messages with certain phrases
         content = msg.content
         if "car ride" in content.lower():
