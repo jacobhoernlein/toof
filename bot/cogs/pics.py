@@ -120,3 +120,4 @@ class ToofPics(commands.Cog):
 
 def setup(bot:toof.ToofBot):
     bot.add_cog(ToofPics(bot))
+    
