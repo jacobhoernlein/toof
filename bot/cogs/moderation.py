@@ -15,20 +15,7 @@ class ToofMod(commands.Cog):
 
     def __init__(self, bot:toof.ToofBot):
         self.bot = bot
-
-    # Verifies users if they say "woof" in the welcome channel. Deletes the message.
-    # Only executes if the user has no roles.
-    @commands.Cog.listener()
-    async def on_message(self, message:discord.Message):
-        """Verifies users"""
-        member_role = self.bot.config.member_role
-
-        if message.channel == self.bot.config.welcome_channel \
-        and member_role not in message.author.roles:
-            await message.delete()
-            if message.content == 'woof':
-                await message.author.add_roles(member_role)
-            
+      
     # Snipes deleted messages and puts them into the mod log
     @commands.Cog.listener()
     async def on_message_delete(self, message:discord.Message):

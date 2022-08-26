@@ -60,12 +60,7 @@ class ToofEvents(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member:discord.Member):
         """Sends a message to the welcome channel when a new member joins"""
-        welcome_channel = self.bot.config.welcome_channel
-        rules_channel = self.bot.config.rules_channel
-
-        await welcome_channel.send(
-            f"henlo {member.mention} welcime to server. read {rules_channel.mention} pls. say 'woof' when ur done 🐶"
-        )
+        await member.add_roles(self.bot.config.member_role)
 
     # Replies to messages that have certain phrases in them    
     @commands.Cog.listener()
