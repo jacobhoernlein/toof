@@ -104,7 +104,7 @@ async def setup(bot:toof.ToofBot):
         @discord.app_commands.command(name="list", description="List available roles.")
         async def list_roles(self, interaction:discord.Interaction):
             role_list = ""
-            for role in bot.config.extra_roles:
+            for role in bot.config.roles:
                 role_list += f"• {role.mention}\n"
 
             embed = discord.Embed(
@@ -119,7 +119,7 @@ async def setup(bot:toof.ToofBot):
         @discord.app_commands.command(name="add", description="Give yourself a role.")
         @discord.app_commands.describe(role="The role that you want to give yourself.")
         async def add_role(self, interaction:discord.Interaction, role:discord.Role):
-            if role in bot.config.extra_roles and role not in interaction.user.roles:
+            if role in bot.config.roles and role not in interaction.user.roles:
                 await interaction.user.add_roles(role)
                 await interaction.response.send_message("✅", ephemeral=True)
             else:
@@ -128,7 +128,7 @@ async def setup(bot:toof.ToofBot):
         @discord.app_commands.command(name="remove", description="Take away a role from yourself.")
         @discord.app_commands.describe(role="The role that you want to remove from yourself.")
         async def remove_role(self, interaction:discord.Interaction, role:discord.Role):
-            if role in bot.config.extra_roles and role in interaction.user.roles:
+            if role in bot.config.roles and role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
                 await interaction.response.send_message("✅", ephemeral=True)
             else:
@@ -150,8 +150,8 @@ async def setup(bot:toof.ToofBot):
             with open(bot.config.filename) as fp:
                 config = json.load(fp)
 
-            config['roles']['extra'].append(role.id)
-            bot.config.extra_roles.append(role)
+            config['roles'].append(role.id)
+            bot.config.roles.append(role)
             
             with open(bot.config.filename, 'w') as fp:
                 json.dump(config, fp, indent=4)
@@ -159,14 +159,14 @@ async def setup(bot:toof.ToofBot):
     # Removes deleted roles from the config
     @bot.event
     async def on_guild_role_delete(role:discord.Role):
-        if role in bot.config.extra_roles:
-            bot.config.extra_roles.remove(role)
+        if role in bot.config.roles:
+            bot.config.roles.remove(role)
 
             with open(bot.config.filename) as fp:
                 config = json.load(fp)
 
             try:
-                config['roles']['extra'].remove(role.id)
+                config['roles'].remove(role.id)
             except KeyError:
                 print(f"Could not remove {role.id} from extra roles list. Skipping.")
             else:

@@ -22,12 +22,9 @@ class Config:
 
         self.server:discord.Guild = None
 
-        self.member_role:discord.Role = None
-        self.extra_roles:list[discord.Role] = []
+        self.roles:list[discord.Role] = []
 
         self.log_channel:discord.TextChannel = None
-        self.rules_channel:discord.TextChannel = None
-        self.welcome_channel:discord.TextChannel = None
         self.main_channel:discord.TextChannel = None
         self.quotes_channel:discord.TextChannel = None
         
@@ -62,26 +59,8 @@ class Config:
 
         self.server = self.__bot.get_guild(config['server_id'])
 
-        
-        self.member_role = discord.utils.find(
-            lambda r: r.id == config['roles']['member'],
-            self.server.roles
-        )
-        for role_id in config['roles']['extra']:
-            role = discord.utils.find(
-                lambda r: r.id == role_id,
-                self.server.roles  
-            )
-            self.extra_roles.append(role)
-
         self.log_channel = self.__bot.get_channel(
             config['channels']['log']
-        )
-        self.rules_channel = self.__bot.get_channel(
-            config['channels']['rules']
-        )
-        self.welcome_channel = self.__bot.get_channel(
-            config['channels']['welcome']
         )
         self.main_channel = self.__bot.get_channel(
             config['channels']['main']
@@ -89,6 +68,13 @@ class Config:
         self.quotes_channel = self.__bot.get_channel(
             config['channels']['quotes']
         )
+
+        for role_id in config['roles']:
+            role = discord.utils.find(
+                lambda r: r.id == role_id,
+                self.server.roles  
+            )
+            self.roles.append(role)
 
 
 class ToofBot(commands.Bot):
