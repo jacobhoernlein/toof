@@ -57,34 +57,15 @@ class ToofEvents(commands.Cog):
                          f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
                     )
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member:discord.Member):
-        """Sends a message to the welcome channel when a new member joins"""
-        await member.add_roles(self.bot.config.member_role)
-
     # Replies to messages that have certain phrases in them    
     @commands.Cog.listener()
     async def on_message(self, msg: discord.Message):
         """Listens for specific messages"""
 
-        # Ignores messages sent by the bot and messages sent in the welcome channel
-        if msg.author == self.bot.user or msg.channel == self.bot.config.welcome_channel:
+        # Ignores messages sent by the bot
+        if msg.author == self.bot.user:
             return
         
-        # Logs DMs
-        if isinstance(msg.channel, discord.DMChannel):
-            dm_channel = self.bot.get_channel(1006036934075891732)
-
-            files = []
-            if msg.attachments:
-                for attachment in msg.attachments:
-                    files.append(await attachment.to_file())
-                
-            await dm_channel.send(
-                f"{str(msg.author)}: {msg.content}",
-                files=files
-            )
-
         # Responds to messages with certain phrases
         content = msg.content
         if "car ride" in content.lower():
@@ -119,7 +100,7 @@ class ToofEvents(commands.Cog):
                 await reaction.message.reply(f"https://tenor.com/view/discord-reply-discord-reply-off-discord-reply-gif-22150762")
                 await reaction.message.remove_reaction(reaction.emoji, self.bot.user)
 
-
+    
 async def setup(bot:toof.ToofBot):
     await bot.add_cog(ToofEvents(bot))
 
