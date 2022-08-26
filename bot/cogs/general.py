@@ -103,6 +103,8 @@ class ToofEvents(commands.Cog):
 
         # Handles ping replies
         if msg.mentions and msg.reference:
+            if msg.reference.cached_message.author.bot:
+                return
             emoji = discord.utils.find(lambda e : e.name == 'toofping', msg.guild.emojis)
             if emoji:
                 await msg.add_reaction(emoji)

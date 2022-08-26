@@ -21,23 +21,20 @@ class ToofMod(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message:discord.Message):
         """Verifies users"""
+        member_role = self.bot.config.member_role
+
         if message.channel == self.bot.config.welcome_channel \
-        and len(message.author.roles) <= 1:
-            
+        and member_role not in message.author.roles:
             await message.delete()
-            member_role = self.bot.config.member_role
-            
-            if message.content == 'woof' and member_role not in message.author.roles:
+            if message.content == 'woof':
                 await message.author.add_roles(member_role)
             
     # Snipes deleted messages and puts them into the mod log
     @commands.Cog.listener()
     async def on_message_delete(self, message:discord.Message):
         """Logs deleted messages"""
-        if message.author.id == self.bot.user.id \
-        or message.channel == self.bot.config.log_channel \
-        or (message.channel == self.bot.config.welcome_channel \
-        and len(message.author.roles) <= 1):
+        if message.author.bot \
+        or message.channel == self.bot.config.log_channel:
             return
         
         embed = discord.Embed(
@@ -67,7 +64,7 @@ class ToofMod(commands.Cog):
     @commands.Cog.listener()
     async def on_message_edit(self, before:discord.Message, after:discord.Message):
         """Watches for messages that are edited"""
-        if before.author.id == self.bot.user.id:
+        if before.author.bot:
             return
 
         # We only care about the content of the messages being changed
@@ -106,29 +103,9 @@ class ToofMod(commands.Cog):
         for activity in after.activities:
             if isinstance(activity, discord.Spotify):
                 if activity.title == "Say So" and activity.artist == "Doja Cat":
-                    
                     reason = "Listening to Say So by Doja Cat"
                     await after.send(f"You were kicked for {reason}")
                     await after.kick(reason=reason)
-
-                    embed = discord.Embed(
-                        description=f"Kicked {after.mention} for reason: \"{reason}\".",
-                        color=discord.Color.red()
-                    )
-
-                    embed.set_author(
-                        name=f"{self.bot.user.name}#{self.bot.user.discriminator}:",
-                        icon_url=self.bot.user.avatar_url
-                    )
-
-                    date = dt.datetime.now().strftime("%m/%d/%Y %H:%M")
-                    embed.set_footer(
-                        text=f"{date} UTC"
-                    )
-
-                    await self.bot.config.log_channel.send(
-                        embed=embed
-                    )
                     
 
 async def setup(bot:toof.ToofBot):
