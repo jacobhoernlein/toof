@@ -1,240 +1,61 @@
 """Basic commands for Toof"""
 
 import json
-import os
 import datetime as dt
 from random import choice
-from typing import Union
 
 import discord
 from discord.ext import commands, tasks
-import deepl
 
 import toof
 
-def days_to_age(days:int) -> str:
-    """Returns a formatted date based on the inputted days"""
-    if days < 1:
-            years = 0
-            months = 0
-            days = 0
-    else:
-        years = int(days / 365.25)
-        days -= int(years * 365.25)
-        months = int(days / 30.437)
-        days -= int(months * 30.437)
-
-    age_str = ""
-    if years > 0:
-        age_str += f"{years}y"
-        if months > 0 or days > 0:
-            age_str += " "
-    if months > 0:
-        age_str += f"{months}m"
-        if days > 0:
-            age_str += " "
-    age_str += f"{days}d"
-
-    return age_str
-
-class ToofCommands(commands.Cog):
-    """Basic general commands for Toof"""
-
-    def __init__(self, bot: toof.ToofBot):
-        self.bot = bot
-        
-        with open('configs/birthdays.json') as fp:
-            self.birthdays:dict = json.load(fp)
-
-    # Equivalent of "ping" command that other bots have
-    # Gives the latency, and if the user is in a voice channel,
-    # Connects to that channel and plays a funny noise
-    @commands.command(aliases=["ping"])
-    async def speak(self, ctx: commands.Context):
-        """Equivalent of \"ping\" command"""
-        await ctx.send(f"woof. ({round(self.bot.latency * 1000)}ms)")
-           
-    # Makes Toof curl up in the users lap.
-    # Shuts down the bot if called by Jacob
-    @commands.command(aliases=["shutdown"])
-    async def sleep(self, ctx: commands.Context):
-        """Make Toof take a nap"""
-        # Makes sure only I can disable the bot
-        if ctx.author.id == 243845903146811393:
-            await ctx.send('*fucking dies*')
-            await self.bot.toof_shut_down()
-        # Kindly lets the user know they can't do that
-        else:
-            await ctx.send(f"*snuggles in {ctx.author.display_name}'s lap*")
-
-
-    # Adds a message to the quoteboard
-    @commands.command()
-    async def quote(self, ctx: commands.Context, member:Union[discord.Member, str]=None, *, quote:str=None):
-        """
-        Adds something to the quoteboard\n
-        You can either use this in a reply to an original message,
-        Or you can use it by doing: 
-            'toof, quote \"the person's name\" {the quote body}'
-        """
-
-        quote_channel = self.bot.config.quotes_channel
-
-        # If the command is a reply, adds the original message to the quoteboard
-        if ctx.message.reference:
-            message = ctx.message.reference.cached_message
-
-            if message:
-                if message.content:
-                    embed = discord.Embed(
-                        description=message.content,
-                        color=discord.Color.blurple()
-                    )
-                else:
-                    embed = discord.Embed(colour=discord.Colour.blurple())
-                if message.attachments:
-                    attachment_url = message.attachments[0].url
-                    embed.set_image(url=attachment_url)
-
-                embed.set_author(
-                    name=f"{message.author.name}#{message.author.discriminator} (click to jump):",
-                    url=message.jump_url,
-                    icon_url=message.author.avatar_url
-                )
-        
-                date = message.created_at.strftime("%m/%d/%Y")
-                embed.set_footer(text=date)
-
-            else:
-                await ctx.message.add_reaction("👎")
-                return
-        # If it is not a reply, uses the normal functionality
-        else:
-            if member is None or quote is None:
-                await ctx.message.add_reaction("❓")
-                return
-            
-            embed = discord.Embed(
-                description=quote,
-                color=discord.Color.blurple()
-            )
-
-            if isinstance(member, discord.Member):
-                embed.set_author(
-                    name=f"{member.name}#{member.discriminator} (allegedly) (click to jump):",
-                    url=ctx.message.jump_url,
-                    icon_url=member.avatar_url
-                )
-            elif isinstance(member, str):
-                embed.set_author(
-                    name=f"{member} (allegedly) (click to jump):",
-                    url=ctx.message.jump_url
-                )
-            else:
-                await ctx.message.add_reaction("❓")
-                return
-            
-            if ctx.message.attachments:
-                attachment_url = ctx.message.attachments[0].url
-                embed.set_image(url=attachment_url)
-            
-            date = ctx.message.created_at.strftime("%m/%d/%Y")
-            embed.set_footer(text=date)
-
-        await quote_channel.send(
-            content=f"{ctx.author.mention} submitted a quote:",
-            embed=embed
-        )
-
-    # Shows someone's birthday
-    @commands.group(invoke_without_command=True, aliases=["birthday"])
-    async def bday(self, ctx:commands.Context, member:discord.Member=None):
-        """
-        Looks up a members birthday. Or, use subcommands 
-        to add or remove your own, or to lookup someone's 
-        age on discord.
-        """            
-        if member is None:
-            member = ctx.author
-        
-        for user_id, birthday in self.birthdays.items():
-            if str(member.id) == str(user_id):
-                age = dt.datetime.now() - dt.datetime.strptime(birthday, "%m/%d/%Y")
-            
-                await ctx.send(f"woof! ({birthday} -> {days_to_age(age.days)}!)")
-        
-                return
-        await ctx.send("...")
-
-    # Adds someone's birthday to the birthdays file
-    @bday.command(name="add")
-    async def bday_add(self, ctx:commands.Context, birthday:str=None):
-        """Add your birthday to the list"""
-        # Checks to make sure a user hasn't already set their birthday
-        for user_id in self.birthdays.keys():
-            if str(ctx.author.id) == str(user_id):
-               await ctx.message.add_reaction("👎")
-               return
-
-        try:
-            day = dt.datetime.strptime(birthday, "%m/%d/%Y")
-        # Formatting went wrong
-        except ValueError:
-            await ctx.message.add_reaction("❓")
-            await ctx.send("woof! (mm/dd/yyyy)")
-            return
-
-        # Converts day from datetime object to string, stores in library
-        day = day.strftime("%m/%d/%Y")
-        self.birthdays[str(ctx.author.id)] = day
-
-        with open("configs/birthdays.json", "w") as fp:
-            json.dump(self.birthdays, fp, indent=4)
-
-        await ctx.message.add_reaction("👍")
-
-    # Removes someone's birthday from the config
-    @bday.command()
-    async def bday_remove(self, ctx:commands.Context):
-        """Remove your birthday from the list"""
-        for user_id in self.birthdays.keys():
-            if str(ctx.author.id) == str(user_id):
-                await ctx.message.add_reaction("👍")
-
-                del self.birthdays[str(user_id)]                
-                with open("configs/birthdays.json", "w") as fp:
-                    json.dump(self.birthdays, fp, indent=4)
-                
-                return
-        await ctx.message.add_reaction("❓")
-
-    # Shows someone's age on Discord
-    @bday.command(name="discord")
-    async def discord_age(self, ctx:commands.Context, member:discord.Member=None):
-        """Gives the members Discord age"""
-        if member is None:
-            member = ctx.author
-        
-        date_str = member.created_at.strftime("%m/%d/%Y")
-        age:dt.timedelta = dt.datetime.now() - member.created_at
-        
-        await ctx.send(f"woof! ({date_str} -> {days_to_age(age.days)}!)")
 
 class ToofEvents(commands.Cog):
     """Cog that contains basic event handling"""
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.translator = deepl.Translator(os.getenv('DEEPLKEY'))
         
-        with open('configs/birthdays.json') as fp:
-            self.birthdays:dict = json.load(fp)
-
-    # Starts loops
     @commands.Cog.listener()
     async def on_ready(self):
         self.change_status.start()
         self.check_time.start()
+
+    def cog_unload(self):
+        self.change_status.cancel()
+        self.check_time.cancel()
+
+    # Changes the status on a loop
+    @tasks.loop(seconds=180)
+    async def change_status(self):
+        """Changes the status on a 180s loop"""
+        await self.bot.change_presence(activity=choice(self.bot.config.activities))
+
+    # Checks if it's Friday or a Birthday
+    @tasks.loop(seconds=60)
+    async def check_time(self):
+        """Sends a good morning happy friday gif at a certain time"""
+        main_channel = self.bot.config.main_channel
+        now = dt.datetime.now()
+        
+        with open('configs/birthdays.json') as fp:
+            birthdays:dict = json.load(fp)
+
+        # Automated messages will be sent at noon
+        if now.hour == 12 and now.minute == 00:
+            # Checks to see if it's Friday
+            if now.weekday() == 4:
+                await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
+            
+            # Checks to see if it's anyone's birthday
+            date = now.strftime("%m/%d/%Y")
+            
+            for user_id, birthday in birthdays.items():
+                if date == birthday:
+                    user = self.bot.get_user(user_id)
+                    await main_channel.send(
+                         f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
+                    )
 
     @commands.Cog.listener()
     async def on_member_join(self, member:discord.Member):
@@ -290,54 +111,117 @@ class ToofEvents(commands.Cog):
                 await msg.add_reaction("🇮")
                 await msg.add_reaction("🇳")
                 await msg.add_reaction("🇬")            
-        
-    # Translates messages using DeepL API
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction:discord.Reaction, user:discord.Member):
-        # Ignore reactions added by the bot
-        if user == self.bot.user:
-            return
-
-        # Translates to English using DeepL API
-        if reaction.emoji == '🇬🇧' or reaction.emoji == '🇺🇸' and reaction.count == 1:
-            result = self.translator.translate_text(str(reaction.message.content), target_lang="EN-US")
-            await reaction.message.reply(f'{result.detected_source_lang} -> EN: "{result.text}"')
-            return
-        # Translates to Japanese using DeepL API
-        if reaction.emoji == '🇯🇵' and reaction.count == 1:
-            result = self.translator.translate_text(str(reaction.message.content), target_lang="JA")
-            await reaction.message.reply(f'{result.detected_source_lang} -> JA: "{result.text}"')
-            return
                     
-    # Changes the status on a loop
-    @tasks.loop(seconds=180)
-    async def change_status(self):
-        """Changes the status on a 180s loop"""
-        await self.bot.change_presence(activity=choice(self.bot.config.activities))
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction:discord.Reaction, usr:discord.User):
+        if reaction.message.mentions and reaction.message.reference:
+            referenced_message = reaction.message.reference.cached_message
+            if referenced_message.author == usr \
+            and reaction.emoji.name == 'toofping' \
+            and self.bot.user in [member async for member in reaction.users()]:
+                await reaction.message.reply(f"https://tenor.com/view/discord-reply-discord-reply-off-discord-reply-gif-22150762")
+                await reaction.message.remove_reaction(reaction.emoji, self.bot.user)
 
-    # Checks if it's Friday or a Birthday
-    @tasks.loop(seconds=60)
-    async def check_time(self):
-        """Sends a good morning happy friday gif at a certain time"""
-        main_channel = self.bot.config.main_channel
-        now = dt.datetime.now()
+
+async def setup(bot:toof.ToofBot):
+    await bot.add_cog(ToofEvents(bot))
+
+    @bot.tree.command(name="speak", description="Check Toof's latency.")
+    async def speak(interaction:discord.Interaction):
+        await interaction.response.send_message(f"woof! ({round(bot.latency * 1000)}ms)", ephemeral=True)
+
+    # Allows users to add quotes to the quoteboard by using a context menu
+    @bot.tree.context_menu(name="Quote Message")
+    @discord.app_commands.guild_only()
+    async def quote_context(interaction:discord.Interaction, msg:discord.Message):
+        if msg.content:
+            embed = discord.Embed(
+                description=msg.content,
+                color=discord.Color.blurple()
+            )
+        else:
+            embed = discord.Embed(colour=discord.Colour.blurple())
+        if msg.attachments:
+            attachment_url = msg.attachments[0].url
+            embed.set_image(url=attachment_url)
+
+        embed.set_author(
+            name=f"{msg.author.name}#{msg.author.discriminator} (click to jump):",
+            url=msg.jump_url,
+            icon_url=msg.author.avatar.url
+        )
+
+        date = msg.created_at.strftime("%m/%d/%Y")
+        embed.set_footer(text=date)
+
+        await bot.config.quotes_channel.send(
+            content=f"{interaction.user.mention} submitted a quote:",
+            embed=embed 
+        )
+        await interaction.response.send_message("✅", ephemeral=True)
+
+    # Command to add a quote to the quoteboard.
+    @bot.tree.command(
+        name="quote",
+        description="Add a quote to the quoteboard."
+    )
+    @discord.app_commands.guild_only()
+    @discord.app_commands.describe(
+        member="The member to quote.",
+        quote="What they said."
+    )
+    async def quote_command(interaction:discord.Interaction, member:discord.Member, quote:str):
+        embed = discord.Embed(
+            description=quote,
+            color=discord.Color.blurple()
+        )
+
+        embed.set_author(
+            name=f"{member.name}#{member.discriminator}:",
+            icon_url=member.avatar.url
+        )
         
-        # Automated messages will be sent at noon
-        if now.hour == 12 and now.minute == 00:
-            # Checks to see if it's Friday
-            if now.weekday() == 4:
-                await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
-            
-            # Checks to see if it's anyone's birthday
-            date = now.strftime("%m/%d/%Y")
-            
-            for user_id, birthday in self.birthdays.items():
-                if date == birthday:
-                    user = self.bot.get_user(user_id)
-                    await main_channel.send(
-                         f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
-                    )
+        if interaction.message and interaction.message.attachments:
+            attachment_url = interaction.message.attachments[0].url
+            embed.set_image(url=attachment_url)
+        
+        date = dt.datetime.now().strftime("%m/%d/%Y")
+        embed.set_footer(text=date)
 
-def setup(bot:toof.ToofBot):
-    bot.add_cog(ToofCommands(bot))
-    bot.add_cog(ToofEvents(bot))
+        await bot.config.quotes_channel.send(
+            content=f"{interaction.user.mention} submitted a quote:",
+            embed=embed 
+        )
+        await interaction.response.send_message("✅", ephemeral=True)
+
+    with open('configs/birthdays.json') as fp:
+        birthdays:dict = json.load(fp)
+
+    @bot.tree.context_menu(name="Birthday")
+    async def birthday_context(interaction:discord.Interaction, member:discord.Member):
+        for user_id, birthday in birthdays.items():
+            if str(member.id) == str(user_id):
+                await interaction.response.send_message(f"woof! ({birthday})", ephemeral=True)
+                return
+
+        await interaction.response.send_message("...", ephemeral=True)
+        
+    @bot.tree.command(name="birthday", description="Tell Toof your birthday.")
+    @discord.app_commands.describe(birthday="Format as mm/dd/yyyy.")
+    async def birthday_update(interaction:discord.Interaction, birthday:str):
+        try:
+            day = dt.datetime.strptime(birthday, "%m/%d/%Y")
+        # Formatting went wrong
+        except ValueError:
+            await interaction.response.send_message("woof! (mm/dd/yyyy)", ephemeral=True)
+            return
+
+        # Converts day from datetime object to string, stores in library
+        day = day.strftime("%m/%d/%Y")
+        birthdays[str(interaction.user.id)] = day
+
+        with open("configs/birthdays.json", "w") as fp:
+            json.dump(birthdays, fp, indent=4)
+
+        await interaction.response.send_message("✅", ephemeral=True)
+          

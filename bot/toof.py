@@ -1,82 +1,37 @@
-"""Module which contains the bot class"""
+"""
+Establishes the config and bot classes,
+run with --main or --dev arguments to bring
+bot online.
+"""
 
 import os
+import sys
 import json
+import asyncio
 
 import discord
 from discord.ext import commands
-
-
-# class TwitterConfig:
-#     """Class that includes the Twitter channel and lastest Tweet ID"""
-
-#     def __init__(self, bot:"ToofBot", config:dict):
-#         self.channel:discord.TextChannel = bot.get_channel(config['channels']['twitter']['id'])
-#         self.latest:int = config['channels']['twitter']['latest']
-    
+  
 
 class Config:
     """Class that includes information on Roles and Channels of a discord.Guild"""
 
     def __init__(self, bot:"ToofBot", configfile:str):
         self.__bot:"ToofBot" = bot
-        self.__filename = configfile
+        self.filename = configfile
 
         self.server:discord.Guild = None
 
-        self.mod_role:discord.Role = None
-        self.mute_role:discord.Role = None
         self.member_role:discord.Role = None
+        self.extra_roles:list[discord.Role] = []
 
         self.log_channel:discord.TextChannel = None
         self.rules_channel:discord.TextChannel = None
         self.welcome_channel:discord.TextChannel = None
         self.main_channel:discord.TextChannel = None
         self.quotes_channel:discord.TextChannel = None
-
-        # self.twitter:TwitterConfig = None
         
-        self.activities:list[discord.Activity] = None
-
-    def load(self):
-        """Loads the config from the config file"""
-        with open(self.__filename) as fp:
-            config = json.load(fp)
-
-        self.server = self.__bot.get_guild(config['server_id'])
-
-        self.mod_role = discord.utils.find(
-            lambda r: r.id == config['roles']['mod'],
-            self.server.roles
-        )
-        self.mute_role = discord.utils.find(
-            lambda r: r.id == config['roles']['mute'],
-            self.server.roles
-        )
-        self.member_role = discord.utils.find(
-            lambda r: r.id == config['roles']['member'],
-            self.server.roles
-        )
-
-        self.log_channel = self.__bot.get_channel(
-            config['channels']['log']
-        )
-        self.rules_channel = self.__bot.get_channel(
-            config['channels']['rules']
-        )
-        self.welcome_channel = self.__bot.get_channel(
-            config['channels']['welcome']
-        )
-        self.main_channel = self.__bot.get_channel(
-            config['channels']['main']
-        )
-        self.quotes_channel = self.__bot.get_channel(
-            config['channels']['quotes']
-        )
-        # self.twitter = TwitterConfig(self.__bot, config)
-
-
-        self.activities = [
+        self.activities:list[discord.Activity] = [
             discord.Activity(
                 type=discord.ActivityType.watching,
                 name="the mailman"
@@ -98,16 +53,42 @@ class Config:
                 name="with a ball"
             )
         ]
+
+    def load(self):
+        """Loads the config from the config file"""
         
-    # def save(self):
-    #     """Saves the configs to the config file file"""
-    #     with open(self.__filename) as fp:
-    #         config = json.load(fp)
+        with open(self.filename) as fp:
+            config = json.load(fp)
+
+        self.server = self.__bot.get_guild(config['server_id'])
+
         
-    #     config['channels']['twitter']['latest'] = self.twitter.latest
-        
-    #     with open(self.__filename, 'w') as fp:
-    #         json.dump(config, fp, indent=4)
+        self.member_role = discord.utils.find(
+            lambda r: r.id == config['roles']['member'],
+            self.server.roles
+        )
+        for role_id in config['roles']['extra']:
+            role = discord.utils.find(
+                lambda r: r.id == role_id,
+                self.server.roles  
+            )
+            self.extra_roles.append(role)
+
+        self.log_channel = self.__bot.get_channel(
+            config['channels']['log']
+        )
+        self.rules_channel = self.__bot.get_channel(
+            config['channels']['rules']
+        )
+        self.welcome_channel = self.__bot.get_channel(
+            config['channels']['welcome']
+        )
+        self.main_channel = self.__bot.get_channel(
+            config['channels']['main']
+        )
+        self.quotes_channel = self.__bot.get_channel(
+            config['channels']['quotes']
+        )
 
 
 class ToofBot(commands.Bot):
@@ -119,51 +100,63 @@ class ToofBot(commands.Bot):
         The rest of the arguments are the same as its super
         """
         super().__init__(*args, **kwargs)
-
         self.config = Config(self, configfile)
         
-        self.__cogfolder = cogfolder
-        for filename in os.listdir(self.__cogfolder):
-            if filename.endswith('.py'):
-                self.load_extension(f'{self.__cogfolder}.{filename[:-3]}')
-        
-    # Preps the bot by saving the last tweet and disconnecting from voice
-    async def prep_close(self):
-        """Saves the last Tweet and disconnects voice clients"""
-        # self.config.save()
-        for voice in self.voice_clients:
-            await voice.disconnect()    
+        # Loads bot's extensions
+        async def load_extensions():
+            for filename in os.listdir(cogfolder):
+                if filename.endswith('.py'):
+                    await self.load_extension(f'{cogfolder}.{filename[:-3]}')
+        asyncio.run(load_extensions()) 
 
-    # Cleans up then closes connection to Discord
-    async def toof_shut_down(self):
-        """Cleans up then closes connection to Discord"""
-        await self.prep_close()
-        await self.close()
-        print("*dies*")
-
-    # Cleans up then reloads all extensions and configs
-    async def toof_reload(self):
-        """Reloads all extensions"""
-        print("*rolls over*")
-        await self.prep_close()
-
-        # Uloads loaded extensions
-        loaded_extensions = []
-        for extension in self.extensions:
-            loaded_extensions.append(str(extension))
-        for extension in loaded_extensions:
-            self.unload_extension(extension)
-
-        # Loads all extensions in the cogs folder
-        for filename in os.listdir(self.__cogfolder):
-            if filename.endswith('.py'):
-                extension = f'{self.__cogfolder}.{filename[:-3]}'
-                
-                try:
-                    self.load_extension(extension)
-                except commands.NoEntryPointError:
-                    print(f"No setup function for {extension}. Skipping")
-                
-        # Loads new configs if they've been added.
+    async def on_ready(self):
         self.config.load()
-                
+        await self.tree.sync()
+        print("\
+ _____             __   ___       _   \n\
+/__   \___   ___  / _| / __\ ___ | |_ \n\
+  / /\/ _ \ / _ \| |_ /__\/// _ \| __|\n\
+ / / | (_) | (_) |  _/ \/  \ (_) | |_ \n\
+ \/   \___/ \___/|_| \_____/\___/ \__|\n\
+                      Running Toof v2."
+        )
+
+
+if __name__ == "__main__":
+    
+    if len(sys.argv) != 2 or sys.argv[1] not in ['--main', '-m', '--dev', '-d']:
+        print("Choose an option:")
+        print("   --main, -m: Main branch.")
+        print("   --dev, -d : Dev branch.")
+
+    elif sys.argv[1] in ['--main', '-m']:
+        # Initializes the bot using the ToofBot class
+        # with every intent enabled.
+        bot = ToofBot(
+            configfile='configs/main.json',
+            cogfolder='cogs',
+
+            command_prefix="NO PREFIX",
+            help_command=None,
+            intents=discord.Intents.all(),
+            max_messages=5000
+        )
+        
+        # Runs the bot with the token from the environment variable
+        bot.run(os.getenv('BOTTOKEN'))
+
+    elif sys.argv[1] in ['--dev', '-d']:
+        # Initializes the bot using the ToofBot class
+        # with every intent enabled.
+        bot = ToofBot(
+            configfile='configs/dev.json',
+            cogfolder='cogs',
+
+            command_prefix="NO PREFIX",
+            help_command=None,
+            intents=discord.Intents.all(),
+            max_messages=5000
+        )
+        
+        # Runs the bot with the token from the environment variable
+        bot.run(os.getenv('TESTBOTTOKEN'))
