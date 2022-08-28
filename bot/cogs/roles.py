@@ -169,7 +169,7 @@ class RoleCreateModal(discord.ui.Modal):
         role = await interaction.guild.create_role(
             name=self.name.value, 
             color=discord.Color.from_str(self.color.value),
-            mentionable=(self.role_type != "pronouns")
+            mentionable=(self.role_type == "gaming")
         )
 
         # Creates a config role object and adds it to the list of the respective type.

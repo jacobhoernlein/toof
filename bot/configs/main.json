@@ -5,8 +5,72 @@
         "main": 1012811567705903195,
         "quotes": 889947064723718164
     },
-    "roles": [
-        1012724189112836126,
-        1012775719010582678
-    ]
+    "roles": {
+        "pings": [
+            {
+                "name": "Announcements",
+                "id": 1013494893336870913,
+                "description": "Recieve a ping for important server updates/announcements.",
+                "emoji": "\ud83d\udce3"
+            },
+            {
+                "name": "Game Nights",
+                "id": 1013495082894229525,
+                "description": "Get pinged whenever we do a server game night.",
+                "emoji": "\ud83c\udfaf"
+            },
+            {
+                "name": "Movie Nights",
+                "id": 1013495238544859196,
+                "description": "Server movie nights are fun. Get notified when we do one.",
+                "emoji": "\ud83c\udf7f"
+            }
+        ],
+        "gaming": [
+            {
+                "name": "Sea of Thieves",
+                "id": 1012905494312140970,
+                "description": "Oh what would you do with a drunken sailor...",
+                "emoji": "\u2620\ufe0f"
+            },
+            {
+                "name": "Fortnite",
+                "id": 1012775719010582678,
+                "description": "Number one victory royale!",
+                "emoji": "👑"
+            },
+            {
+                "name": "OMORI",
+                "id": 1012724189112836126,
+                "description": "Everything is going to be okay.",
+                "emoji": "🔪"
+            }
+        ],
+        "pronouns": [
+            {
+                "name": "He/Him",
+                "id": 1013494611978752070,
+                "description": "Guys",
+                "emoji": "\u2642\ufe0f"
+            },
+            {
+                "name": "She/Her",
+                "id": 1013494682245935184,
+                "description": "Gals",
+                "emoji": "\u2640\ufe0f"
+            },
+            {
+                "name": "They/Them",
+                "id": 1013494729620603042,
+                "description": "Thems",
+                "emoji": "\ud83d\ude0e"
+            },
+            {
+                "name": "Other",
+                "id": 1013494790647722045,
+                "description": "IDFK",
+                "emoji": "\ud83e\udd14"
+            }
+        ]
+    }
 }
