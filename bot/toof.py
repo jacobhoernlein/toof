@@ -13,16 +13,24 @@ import discord
 from discord.ext import commands
   
 
+class ConfigRole:
+    """Class containing a role and information on that role."""
+    
+    def __init__(self, roles: list[discord.Role], id, description, emoji):
+        self.role: discord.Role = discord.utils.find(lambda r: r.id == id, roles)
+        self.description: str = description
+        self.emoji: str = emoji
+
+
 class Config:
-    """Class that includes information on Roles and Channels of a discord.Guild"""
+    """Class that includes information on Roles and Channels of a discord.Guild."""
 
     def __init__(self, bot:"ToofBot", configfile:str):
         self.__bot:"ToofBot" = bot
         self.filename = configfile
 
         self.server:discord.Guild = None
-
-        self.roles:list[discord.Role] = []
+        self.roles: dict[str, list[ConfigRole]] = {}
 
         self.log_channel:discord.TextChannel = None
         self.main_channel:discord.TextChannel = None
@@ -69,30 +77,48 @@ class Config:
             config['channels']['quotes']
         )
 
-        for role_id in config['roles']:
-            role = discord.utils.find(
-                lambda r: r.id == role_id,
-                self.server.roles  
-            )
-            self.roles.append(role)
+        self.roles['pings'] = [
+            ConfigRole(
+                roles=self.server.roles,
+                id=role_dict['id'],
+                description=role_dict['description'],
+                emoji=role_dict['emoji']
+            ) for role_dict in config['roles']['pings']
+        ]
+        self.roles['gaming'] = [
+            ConfigRole(
+                roles=self.server.roles,
+                id=role_dict['id'],
+                description=role_dict['description'],
+                emoji=role_dict['emoji']
+            ) for role_dict in config['roles']['gaming']
+        ]
+        self.roles['pronouns'] = [
+            ConfigRole(
+                roles=self.server.roles,
+                id=role_dict['id'],
+                description=role_dict['description'],
+                emoji=role_dict['emoji']
+            ) for role_dict in config['roles']['pronouns']
+        ]
 
 
 class ToofBot(commands.Bot):
-    """Subclass of commands.Bot that includes neccessary configs and cleanups"""
+    """Subclass of commands.Bot that includes neccessary configs and cleanups for toof."""
 
-    def __init__(self, configfile:str, cogfolder:str, *args, **kwargs):
+    def __init__(self, configfile:str, *args, **kwargs):
         """
-        Takes in two required arguments, the config file and cog folder.
-        The rest of the arguments are the same as its super
+        Takes in one required argument, the config file.
+        Other args are the same as commands.Bot.
         """
         super().__init__(*args, **kwargs)
         self.config = Config(self, configfile)
         
         # Loads bot's extensions
         async def load_extensions():
-            for filename in os.listdir(cogfolder):
+            for filename in os.listdir('cogs'):
                 if filename.endswith('.py'):
-                    await self.load_extension(f'{cogfolder}.{filename[:-3]}')
+                    await self.load_extension(f'cogs.{filename[:-3]}')
         asyncio.run(load_extensions()) 
 
     async def on_ready(self):
@@ -104,7 +130,7 @@ class ToofBot(commands.Bot):
   / /\/ _ \ / _ \| |_ /__\/// _ \| __|\n\
  / / | (_) | (_) |  _/ \/  \ (_) | |_ \n\
  \/   \___/ \___/|_| \_____/\___/ \__|\n\
-                      Running Toof v2."
+                     Running Toof v2.2"
         )
 
 
@@ -114,35 +140,21 @@ if __name__ == "__main__":
         print("Choose an option:")
         print("   --main, -m: Main branch.")
         print("   --dev, -d : Dev branch.")
+        exit()
 
     elif sys.argv[1] in ['--main', '-m']:
-        # Initializes the bot using the ToofBot class
-        # with every intent enabled.
-        bot = ToofBot(
-            configfile='configs/main.json',
-            cogfolder='cogs',
-
-            command_prefix="NO PREFIX",
-            help_command=None,
-            intents=discord.Intents.all(),
-            max_messages=5000
-        )
-        
-        # Runs the bot with the token from the environment variable
-        bot.run(os.getenv('BOTTOKEN'))
+        configfile = 'configs/main.json'
+        token = os.getenv('BOTTOKEN')
 
     elif sys.argv[1] in ['--dev', '-d']:
-        # Initializes the bot using the ToofBot class
-        # with every intent enabled.
-        bot = ToofBot(
-            configfile='configs/dev.json',
-            cogfolder='cogs',
+        configfile = 'configs/dev.json'
+        token = os.getenv('TESTBOTTOKEN')
 
-            command_prefix="NO PREFIX",
-            help_command=None,
-            intents=discord.Intents.all(),
-            max_messages=5000
-        )
-        
-        # Runs the bot with the token from the environment variable
-        bot.run(os.getenv('TESTBOTTOKEN'))
+    bot = ToofBot(
+        configfile=configfile,
+        command_prefix="NO PREFIX",
+        help_command=None,
+        intents=discord.Intents.all(),
+        max_messages=5000
+    )
+    bot.run(token)

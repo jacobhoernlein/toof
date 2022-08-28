@@ -5,5 +5,60 @@
         "main": 977365843354730519,
         "quotes": 979467616294952971
     },
-    "roles": []
+    "roles": {
+        "pings": [
+            {
+                "name": "Announcements",
+                "id": 1013187689895432212,
+                "description": "Recieve a ping for important server updates/announcements.",
+                "emoji": "\ud83d\udce3"
+            },
+            {
+                "name": "Game Nights",
+                "id": 1013187725920305322,
+                "description": "Get pinged whenever we do a server game night.",
+                "emoji": "\ud83c\udfaf"
+            },
+            {
+                "name": "Movie Nights",
+                "id": 1013187761936793650,
+                "description": "Server movie nights are fun. Get notified when we do one.",
+                "emoji": "\ud83c\udf7f"
+            }
+        ],
+        "gaming": [
+            {
+                "name": "Sea of Thieves",
+                "id": 1013197667930746941,
+                "description": "Oh what would you do with a drunken sailor...",
+                "emoji": "\u2620\ufe0f"
+            }
+        ],
+        "pronouns": [
+            {
+                "name": "He/Him",
+                "id": 1013201058337673256,
+                "description": "Guys",
+                "emoji": "\u2642\ufe0f"
+            },
+            {
+                "name": "She/Her",
+                "id": 1013201089434226699,
+                "description": "Gals",
+                "emoji": "\u2640\ufe0f"
+            },
+            {
+                "name": "They/Them",
+                "id": 1013302422543794268,
+                "description": "Thems",
+                "emoji": "\ud83d\ude0e"
+            },
+            {
+                "name": "Other",
+                "id": 1013302460154122281,
+                "description": "IDFK",
+                "emoji": "\ud83e\udd14"
+            }
+        ]
+    }
 }

@@ -1,4 +1,4 @@
-"""Twitter bot"""
+"""Cog that contains twitter functionality."""
 
 import os
 from random import randint
@@ -11,6 +11,7 @@ import toof
 
 
 class ToofTwitter(commands.Cog):
+    """Cog that contains Twitter functionality."""
 
     def __init__(self, bot:toof.ToofBot):
         self.bot = bot
@@ -30,15 +31,14 @@ class ToofTwitter(commands.Cog):
             return
         
         author_name = msg.author.display_name
-        channel_name = msg.channel.name
         
-        message = f"{msg.content[0:(230 - (len(author_name) + len(channel_name)))]}..."
+        message = f"{msg.content[0:(234 - (len(author_name)))]}..."
 
-        tweet_content = f"\"{message}\" -{author_name} (in {channel_name})"
+        tweet_content = f"\"{message}\" -{author_name}"
         response = self.tpclient.create_tweet(text=tweet_content)
         url = f"https://twitter.com/ToofBot/status/{response.data['id']}"
         await msg.reply(url)
 
-        
+    
 async def setup(bot:toof.ToofBot):
     await bot.add_cog(ToofTwitter(bot))
