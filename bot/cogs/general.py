@@ -25,16 +25,16 @@ class ToofEvents(commands.Cog):
         self.change_status.cancel()
         self.check_time.cancel()
 
-    # Changes the status on a loop
     @tasks.loop(seconds=180)
     async def change_status(self):
         """Changes the status on a 180s loop"""
+
         await self.bot.change_presence(activity=choice(self.bot.config.activities))
 
-    # Checks if it's Friday or a Birthday
     @tasks.loop(seconds=60)
     async def check_time(self):
-        """Sends a good morning happy friday gif at a certain time"""
+        """Sends a good morning happy friday gif or birthday message at a certain time"""
+        
         main_channel = self.bot.config.main_channel
         now = dt.datetime.now()
         
@@ -60,9 +60,6 @@ class ToofEvents(commands.Cog):
     # Replies to messages that have certain phrases in them    
     @commands.Cog.listener()
     async def on_message(self, msg: discord.Message):
-        """Listens for specific messages"""
-
-        # Ignores messages sent by the bot
         if msg.author == self.bot.user:
             return
         
@@ -92,11 +89,12 @@ class ToofEvents(commands.Cog):
                     
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction:discord.Reaction, usr:discord.User):
-        if reaction.message.mentions and reaction.message.reference:
-            referenced_message = reaction.message.reference.cached_message
-            if referenced_message.author == usr \
-            and reaction.emoji.name == 'toofping' \
-            and self.bot.user in [member async for member in reaction.users()]:
+        # If this was a ping reply situation, replies to the offender then removes the bot's reaction.
+
+        if reaction.message.mentions and reaction.message.reference \
+        and reaction.emoji.name == 'toofping' \
+        and self.bot.user in [member async for member in reaction.users()]:
+            if reaction.message.reference.cached_message.author == usr:
                 await reaction.message.reply(f"https://tenor.com/view/discord-reply-discord-reply-off-discord-reply-gif-22150762")
                 await reaction.message.remove_reaction(reaction.emoji, self.bot.user)
 
@@ -106,12 +104,15 @@ async def setup(bot:toof.ToofBot):
 
     @bot.tree.command(name="speak", description="Check Toof's latency.")
     async def speak(interaction:discord.Interaction):
+        """Equivelant of the ping command."""
+        
         await interaction.response.send_message(f"woof! ({round(bot.latency * 1000)}ms)", ephemeral=True)
 
-    # Allows users to add quotes to the quoteboard by using a context menu
     @bot.tree.context_menu(name="Quote Message")
     @discord.app_commands.guild_only()
     async def quote_context(interaction:discord.Interaction, msg:discord.Message):
+        """Allows users to add quotes to the quoteboard by using a context menu"""
+        
         if msg.content:
             embed = discord.Embed(
                 description=msg.content,
@@ -138,7 +139,6 @@ async def setup(bot:toof.ToofBot):
         )
         await interaction.response.send_message("✅", ephemeral=True)
 
-    # Command to add a quote to the quoteboard.
     @bot.tree.command(
         name="quote",
         description="Add a quote to the quoteboard."
@@ -149,6 +149,8 @@ async def setup(bot:toof.ToofBot):
         quote="What they said."
     )
     async def quote_command(interaction:discord.Interaction, member:discord.Member, quote:str):
+        """Command to add a quote to the quoteboard."""
+        
         embed = discord.Embed(
             description=quote,
             color=discord.Color.blurple()
@@ -175,8 +177,10 @@ async def setup(bot:toof.ToofBot):
     with open('configs/birthdays.json') as fp:
         birthdays:dict = json.load(fp)
 
-    @bot.tree.context_menu(name="Birthday")
+    @bot.tree.context_menu(name="Check Birthday")
     async def birthday_context(interaction:discord.Interaction, member:discord.Member):
+        """Looks through the birthday file for the user and lets the user know if it found anything."""
+        
         for user_id, birthday in birthdays.items():
             if str(member.id) == str(user_id):
                 await interaction.response.send_message(f"woof! ({birthday})", ephemeral=True)
@@ -187,6 +191,8 @@ async def setup(bot:toof.ToofBot):
     @bot.tree.command(name="birthday", description="Tell Toof your birthday.")
     @discord.app_commands.describe(birthday="Format as mm/dd/yyyy.")
     async def birthday_update(interaction:discord.Interaction, birthday:str):
+        """Allows users to add their birthdays to the file."""
+        
         try:
             day = dt.datetime.strptime(birthday, "%m/%d/%Y")
         # Formatting went wrong

@@ -11,12 +11,14 @@ import toof
 
 
 async def setup(bot:toof.ToofBot):
+    
+    # Creates a dictionary of pictures based on the contents of
+    # the attachements folder.
     toofpics = {
         'common': [],
         'rare': [],
         'legendary': []
     }
-
     for filename in os.listdir('attachments'):
         if 'l' in filename:
             toofpics['legendary'].append(f'attachments/{filename}')
@@ -25,9 +27,10 @@ async def setup(bot:toof.ToofBot):
         else:
             toofpics['common'].append(f'attachments/{filename}')
 
-    # Command to get a random Toof Pic
     @bot.tree.command(name="pic", description="Get a random Toof Pic.")
     async def toof_pic(interaction:discord.Interaction):
+        """Selects a rarity based on chance, opens that a file of that rarity, and sends it."""
+        
         if random.randint(1, 256) == 1:
             filename = random.choice(toofpics['legendary'])
             content = f"⭐ **LEGENDARY** ⭐ (#{filename[12:-4]})"
@@ -45,15 +48,19 @@ async def setup(bot:toof.ToofBot):
                 file=pic
             )
 
-    # Class handling Toof Pic adding
     class ToofPicMenu(discord.ui.View):
-        def __init__(self, count:int, msg:discord.Message, *args, **kwargs):
+        """Class containing three buttons that represent rarities."""
+        
+        def __init__(self, msg:discord.Message, *args, **kwargs):
+            """The message is passed along to extract the image."""
+            
             super().__init__(*args, **kwargs)
-            self.count = count
             self.msg = msg
+            self.count = len(toofpics['common']) + len(toofpics['rare']) + len(toofpics['legendary'])
 
-        # Handles converting and saving images to attachments folder
         async def save_image(self, fileaddress:str):
+            """Handles converting and saving images to attachments folder"""
+            
             file = self.msg.attachments[0]
 
             # No conversion necessary, saves directly
@@ -120,10 +127,11 @@ async def setup(bot:toof.ToofBot):
                 toofpics['legendary'].append(fileaddress)
                 await interaction.response.edit_message(content="✅")
 
-    # Adds a Toof Pic to the dictionary. Only usable by Jacob
     @bot.tree.context_menu(name="Add Toofpic")
     @discord.app_commands.guild_only()
     async def add_toofpic(interaction:discord.Interaction, msg:discord.Message):
+        """Adds a Toof Pic to the dictionary. Only usable by Jacob"""
+        
         if interaction.user.id != 243845903146811393:
             await interaction.response.send_message(content="❌", ephemeral=True)
             return
@@ -132,5 +140,4 @@ async def setup(bot:toof.ToofBot):
             await interaction.response.send_message(content="❓", ephemeral=True)
             return
 
-        count = len(toofpics['common']) + len(toofpics['rare']) + len(toofpics['legendary'])
-        await interaction.response.send_message(view=ToofPicMenu(count, msg), ephemeral=True)
+        await interaction.response.send_message(view=ToofPicMenu(msg), ephemeral=True)

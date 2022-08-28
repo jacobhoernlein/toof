@@ -8,6 +8,7 @@ import toof
 async def setup(bot:toof.ToofBot):
     voiceusers = {}
 
+    # Watches for when member joins or leaves voice, then updates the dictionary.
     @bot.event
     async def on_voice_state_update(member:discord.Member, before:discord.VoiceState, after:discord.VoiceState):
         # Member joins a voice channel
@@ -24,6 +25,7 @@ async def setup(bot:toof.ToofBot):
     @discord.app_commands.guild_only()
     async def check_voice_time(interaction:discord.Interaction, member:discord.Member):
         """Checks how long you've been in a voice channel"""
+        
         if member not in voiceusers.keys():
             await interaction.response.send_message(content="❓", ephemeral=True)
             return
