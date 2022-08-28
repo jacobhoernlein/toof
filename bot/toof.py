@@ -16,7 +16,7 @@ from discord.ext import commands
 class ConfigRole:
     """Class containing a role and information on that role."""
     
-    def __init__(self, roles: list[discord.Role], id, description, emoji):
+    def __init__(self, roles, id, description, emoji):
         self.role: discord.Role = discord.utils.find(lambda r: r.id == id, roles)
         self.description: str = description
         self.emoji: str = emoji
