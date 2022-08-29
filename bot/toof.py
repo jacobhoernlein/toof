@@ -37,6 +37,7 @@ class Config:
         self.quotes_channel:discord.TextChannel = None
         
         self.roles: dict[str, list[ConfigRole]] = {}
+        self.mod_role: discord.Role = None
 
         self.activities:list[discord.Activity] = [
             discord.Activity(
@@ -79,6 +80,7 @@ class Config:
             config['channels']['quotes']
         )
 
+        self.mod_role = discord.utils.find(lambda r: r.id == config['roles']['mod'], self.server.roles)
         for role_type in ['pings', 'gaming', 'pronouns']:
             self.roles[role_type] = [
                 ConfigRole(
