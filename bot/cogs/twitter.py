@@ -13,7 +13,7 @@ import toof
 class ToofTwitter(commands.Cog):
     """Cog that contains Twitter functionality."""
 
-    def __init__(self, bot:toof.ToofBot):
+    def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         self.tpclient = tweepy.Client(
             consumer_key=os.getenv('TWEEPYAPITOKEN'),
@@ -24,7 +24,7 @@ class ToofTwitter(commands.Cog):
 
     # Shiny messages
     @commands.Cog.listener()
-    async def on_message(self, msg:discord.Message):
+    async def on_message(self, msg: discord.Message):
         if msg.author == self.bot.user \
         or randint(1, 4096) != 69 \
         or not msg.content:
@@ -40,5 +40,5 @@ class ToofTwitter(commands.Cog):
         await msg.reply(url)
 
     
-async def setup(bot:toof.ToofBot):
+async def setup(bot: toof.ToofBot):
     await bot.add_cog(ToofTwitter(bot))

@@ -1,6 +1,7 @@
 """Cog that contains functionality for users to assign themselves roles."""
 
 import json
+from emoji import is_emoji
 import discord
 import toof
 
@@ -8,17 +9,17 @@ import toof
 class RoleAddSelect(discord.ui.Select):
     """Drop down menu for the given category that contains roles users can add."""
 
-    def __init__(self, bot: toof.ToofBot, role_type: str, *args, **kwargs):
+    def __init__(self, interaction: discord.Interaction, bot: toof.ToofBot, role_type: str, *args, **kwargs):
         """
         The bot argument is used for finding the config roles.
         The role_type is the category (pings, gaming, pronouns).
         """
 
-
         # The options for the select menu are constructed by taking the config roles
         # from the bots config for the given role type.
         options = [
             discord.SelectOption(
+                default=(config_role.role in interaction.user.roles),
                 label=config_role.role.name,
                 value=str(config_role.role.id),
                 description=config_role.description,
@@ -65,13 +66,13 @@ class RoleAddButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         # Edits the original response by updating the view to reflect the chosen page.
         await interaction.response.edit_message(
-            view=RoleAddView(self.bot, self.role_type)
+            view=RoleAddView(interaction, self.bot, self.role_type)
         )
 
 class RoleAddView(discord.ui.View):
     """View that contains three buttons for different role categories and a menu to select roles."""
 
-    def __init__(self, bot: toof.ToofBot, role_type: str, *args, **kwargs):
+    def __init__(self, interaction: discord.Interaction, bot: toof.ToofBot, role_type: str, *args, **kwargs):
         """
         Creates a view highlighting the page of the given role_type (pings, gaming, pronouns).
         The bot argument is used to pass along the config and config roles.
@@ -117,11 +118,11 @@ class RoleAddView(discord.ui.View):
 
             style=pronouns_style,
             label="Pronouns",
-            emoji="☺️",
+            emoji="😊",
             row=0
         ))
 
-        self.add_item(RoleAddSelect(bot=bot, role_type=role_type))
+        self.add_item(RoleAddSelect(interaction, bot, role_type))
 
 
 class RoleCreateModal(discord.ui.Modal):
@@ -141,43 +142,65 @@ class RoleCreateModal(discord.ui.Modal):
     name = discord.ui.TextInput(
         label="Role Name", 
         style=discord.TextStyle.short, 
-        placeholder="Fortnite, Minecraft, etc...",
+        placeholder="ex: Fortnite, Minecraft, etc...",
+        min_length=1,
         max_length=20
     ) 
     color = discord.ui.TextInput(
         label="Color",
         style=discord.TextStyle.short,
-        placeholder="Hex format (#ffffff)",
+        placeholder="#ffffff",
         min_length=7,
         max_length=7
     )
     emoji = discord.ui.TextInput(
         label="Emoji",
         style=discord.TextStyle.short,
-        placeholder="Emoji to represent this role in menus"
+        placeholder="Emoji to represent this role in menus.",
+        min_length=1
     )
     description = discord.ui.TextInput(
         label="Description",
         style=discord.TextStyle.long,
         placeholder="What is this role for?",
+        min_length=1,
         max_length=100
     )
 
     async def on_submit(self, interaction: discord.Interaction):
         
+        # Ensures emoji is valid unicode emoji.
+        if not is_emoji(self.emoji.value):
+            await interaction.response.send_message(
+                content="Invalid emoji. Try again.",
+                ephemeral=True
+            )
+            return
+        else:
+            emoji = discord.PartialEmoji.from_str(self.emoji.value)
+
+        # Ensures color was formatted properly.
+        try:
+            color = discord.Color.from_str(self.color.value)
+        except ValueError:
+            await interaction.response.send_message(
+                content="Invalid color code. Try again. Accepts hex format (`#ffffff`).",
+                ephemeral=True
+            )
+            return
+
         # Creates the role on the server from the given input.
         role = await interaction.guild.create_role(
             name=self.name.value, 
-            color=discord.Color.from_str(self.color.value),
+            color=color,
             mentionable=(self.role_type == "gaming")
         )
 
         # Creates a config role object and adds it to the list of the respective type.
         self.bot.config.roles[self.role_type].append(toof.ConfigRole(
-            [role], 
-            role.id, 
+            role=role,
             description=self.description.value, 
-            emoji=self.emoji.value
+            emoji=emoji
         ))
 
         # Creates a dict object based on the role and adds it to the config file.
@@ -270,33 +293,12 @@ class RoleDeleteConfirmView(discord.ui.View):
     async def confirm_delete(self, interaction: discord.Interaction, button: discord.Button):
         """Deletes the role from the bot's dictionary, the server, and the config file."""
 
-        with open(self.bot.config.filename) as fp:
-            config = json.load(fp)
-
-        found_role = False
-        for role_type in ['pings', 'gaming', 'pronouns']:
-            # Finds the dictionary object that represents the role in the config and deletes it.
-            for i in range(len(config['roles'][role_type])):
-                if config['roles'][role_type][i]['id'] == self.role.id:
-                    del config['roles'][role_type][i]
-                    break
-            # Finds the config role in the bot and removes it, as well as deletes the role from the server.
-            for config_role in self.bot.config.roles[role_type]:
-                if config_role.role == self.role:
-                    self.bot.config.roles[role_type].remove(config_role)
-                    await interaction.response.edit_message(
-                        content=f"Deleted `{self.role.name}`.",
-                        view=None
-                    )
-                    await self.role.delete()
-                    found_role = True
-                    break
-            if found_role:
-                break
-
-        with open(self.bot.config.filename, "w") as fp:
-            json.dump(config, fp, indent=4)
-
+        await self.role.delete()
+        await interaction.response.edit_message(
+            content=f"Deleted `{self.role.name}`.",
+            view=None
+        )
+        
     @discord.ui.button(
         label="Cancel",
         style=discord.ButtonStyle.red,
@@ -319,7 +321,7 @@ async def setup(bot: toof.ToofBot):
         """Sends the user the role add menu."""
         
         await interaction.response.send_message(
-            view=RoleAddView(bot, 'pings'),
+            view=RoleAddView(interaction, bot, 'pings'),
             ephemeral=True
         )
 
@@ -358,4 +360,28 @@ async def setup(bot: toof.ToofBot):
                 ephemeral=True
             )
 
-    bot.tree.add_command(RoleConfig(name="role", description="Role creation and deletion."))
+    bot.tree.add_command(RoleConfig(
+        name="role", 
+        description="Role creation and deletion.")
+    )
+
+    @bot.event
+    async def on_guild_role_delete(role: discord.Role):
+        """Removes the role from the config if it was created through commands."""
+
+        with open(bot.config.filename) as fp:
+            config = json.load(fp)
+
+        for role_type in ['pings', 'gaming', 'pronouns']:
+            # Finds the dictionary object that represents the role in the config and deletes it.
+            for i in range(len(config['roles'][role_type])):
+                if config['roles'][role_type][i]['id'] == role.id:
+                    del config['roles'][role_type][i]
+                    with open(bot.config.filename, "w") as fp:
+                        json.dump(config, fp, indent=4)
+                    break
+            # Finds the config role in the bot and removes it.
+            for config_role in bot.config.roles[role_type]:
+                if config_role.role == role:
+                    bot.config.roles[role_type].remove(config_role)
+                    return

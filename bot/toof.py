@@ -4,6 +4,8 @@ run with --main or --dev arguments to bring
 bot online.
 """
 
+from dataclasses import dataclass
+import datetime
 import os
 import sys
 import json
@@ -12,14 +14,12 @@ import asyncio
 import discord
 from discord.ext import commands
   
-
+@dataclass
 class ConfigRole:
     """Class containing a role and information on that role."""
-    
-    def __init__(self, roles, id, description, emoji):
-        self.role: discord.Role = discord.utils.find(lambda r: r.id == id, roles)
-        self.description: str = description
-        self.emoji: str = emoji
+    role: discord.Role
+    description: str
+    emoji: discord.PartialEmoji
 
 
 class Config:
@@ -30,12 +30,14 @@ class Config:
         self.filename = configfile
 
         self.server:discord.Guild = None
-        self.roles: dict[str, list[ConfigRole]] = {}
+        self.voiceusers: dict[int, datetime.datetime] = {}
 
         self.log_channel:discord.TextChannel = None
         self.main_channel:discord.TextChannel = None
         self.quotes_channel:discord.TextChannel = None
         
+        self.roles: dict[str, list[ConfigRole]] = {}
+
         self.activities:list[discord.Activity] = [
             discord.Activity(
                 type=discord.ActivityType.watching,
@@ -77,30 +79,17 @@ class Config:
             config['channels']['quotes']
         )
 
-        self.roles['pings'] = [
-            ConfigRole(
-                roles=self.server.roles,
-                id=role_dict['id'],
-                description=role_dict['description'],
-                emoji=role_dict['emoji']
-            ) for role_dict in config['roles']['pings']
-        ]
-        self.roles['gaming'] = [
-            ConfigRole(
-                roles=self.server.roles,
-                id=role_dict['id'],
-                description=role_dict['description'],
-                emoji=role_dict['emoji']
-            ) for role_dict in config['roles']['gaming']
-        ]
-        self.roles['pronouns'] = [
-            ConfigRole(
-                roles=self.server.roles,
-                id=role_dict['id'],
-                description=role_dict['description'],
-                emoji=role_dict['emoji']
-            ) for role_dict in config['roles']['pronouns']
-        ]
+        for role_type in ['pings', 'gaming', 'pronouns']:
+            self.roles[role_type] = [
+                ConfigRole(
+                    role=discord.utils.find(
+                        lambda r: r.id == role_dict['id'], 
+                        self.server.roles
+                    ),
+                    description=role_dict['description'],
+                    emoji=discord.PartialEmoji.from_str(role_dict['emoji'])
+                ) for role_dict in config['roles'][role_type]
+            ]
 
 
 class ToofBot(commands.Bot):
@@ -124,13 +113,18 @@ class ToofBot(commands.Bot):
     async def on_ready(self):
         self.config.load()
         await self.tree.sync()
+
+        for voice_channel in self.config.server.voice_channels:
+            for member in voice_channel.members:
+                self.config.voiceusers[member.id] = datetime.datetime.now()
+
         print("\
  _____             __   ___       _   \n\
 /__   \___   ___  / _| / __\ ___ | |_ \n\
   / /\/ _ \ / _ \| |_ /__\/// _ \| __|\n\
  / / | (_) | (_) |  _/ \/  \ (_) | |_ \n\
  \/   \___/ \___/|_| \_____/\___/ \__|\n\
-                     Running Toof v2.2"
+                   Running Toof v2.2.1"
         )
 
 

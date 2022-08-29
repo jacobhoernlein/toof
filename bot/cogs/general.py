@@ -1,7 +1,7 @@
 """Basic commands for Toof"""
 
 import json
-import datetime as dt
+import datetime
 from random import choice
 
 import discord
@@ -36,7 +36,7 @@ class ToofEvents(commands.Cog):
         """Sends a good morning happy friday gif or birthday message at a certain time"""
         
         main_channel = self.bot.config.main_channel
-        now = dt.datetime.now()
+        now = datetime.datetime.now()
         
         with open('configs/birthdays.json') as fp:
             birthdays:dict = json.load(fp)
@@ -88,7 +88,7 @@ class ToofEvents(commands.Cog):
                 await msg.add_reaction("🇬")            
                     
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction:discord.Reaction, usr:discord.User):
+    async def on_reaction_add(self, reaction: discord.Reaction, usr: discord.User):
         # If this was a ping reply situation, replies to the offender then removes the bot's reaction.
 
         if reaction.message.mentions and reaction.message.reference \
@@ -99,45 +99,52 @@ class ToofEvents(commands.Cog):
                 await reaction.message.remove_reaction(reaction.emoji, self.bot.user)
 
     
-async def setup(bot:toof.ToofBot):
+async def setup(bot: toof.ToofBot):
     await bot.add_cog(ToofEvents(bot))
 
     @bot.tree.command(name="speak", description="Check Toof's latency.")
-    async def speak(interaction:discord.Interaction):
+    async def speak(interaction: discord.Interaction):
         """Equivelant of the ping command."""
         
         await interaction.response.send_message(f"woof! ({round(bot.latency * 1000)}ms)", ephemeral=True)
 
     @bot.tree.context_menu(name="Quote Message")
     @discord.app_commands.guild_only()
-    async def quote_context(interaction:discord.Interaction, msg:discord.Message):
+    async def quote_context(interaction: discord.Interaction, msg: discord.Message):
         """Allows users to add quotes to the quoteboard by using a context menu"""
         
         if msg.content:
             embed = discord.Embed(
                 description=msg.content,
-                color=discord.Color.blurple()
+                color=discord.Color.blurple(),
+                timestamp=msg.created_at
             )
         else:
-            embed = discord.Embed(colour=discord.Colour.blurple())
+            embed = discord.Embed(
+                color=discord.Colour.blurple(),
+                timestamp=msg.created_at
+            )
         if msg.attachments:
             attachment_url = msg.attachments[0].url
             embed.set_image(url=attachment_url)
-
         embed.set_author(
-            name=f"{msg.author.name}#{msg.author.discriminator} (click to jump):",
-            url=msg.jump_url,
+            name=f"{msg.author}:",
             icon_url=msg.author.avatar.url
         )
 
-        date = msg.created_at.strftime("%m/%d/%Y")
-        embed.set_footer(text=date)
-
         await bot.config.quotes_channel.send(
-            content=f"{interaction.user.mention} submitted a quote:",
-            embed=embed 
+            content=f"Quote submitted by {interaction.user.mention}:",
+            embed=embed,
+            view=discord.ui.View().add_item(
+                discord.ui.Button(
+                    style=discord.ButtonStyle.link,
+                    label="Jump To Message",
+                    url=msg.jump_url,
+                    emoji="⤴️"
+                )
+            )
         )
-        await interaction.response.send_message("✅", ephemeral=True)
+        await interaction.response.send_message("Quote submitted!", ephemeral=True)
 
     @bot.tree.command(
         name="quote",
@@ -148,37 +155,30 @@ async def setup(bot:toof.ToofBot):
         member="The member to quote.",
         quote="What they said."
     )
-    async def quote_command(interaction:discord.Interaction, member:discord.Member, quote:str):
+    async def quote_command(interaction: discord.Interaction, member: discord.Member, quote: str):
         """Command to add a quote to the quoteboard."""
         
         embed = discord.Embed(
             description=quote,
-            color=discord.Color.blurple()
+            color=discord.Color.blurple(),
+            timestamp=interaction.created_at
         )
-
         embed.set_author(
-            name=f"{member.name}#{member.discriminator}:",
+            name=f"{member}:",
             icon_url=member.avatar.url
         )
         
-        if interaction.message and interaction.message.attachments:
-            attachment_url = interaction.message.attachments[0].url
-            embed.set_image(url=attachment_url)
-        
-        date = dt.datetime.now().strftime("%m/%d/%Y")
-        embed.set_footer(text=date)
-
         await bot.config.quotes_channel.send(
-            content=f"{interaction.user.mention} submitted a quote:",
-            embed=embed 
+            content=f"Quote submitted by {interaction.user.mention}:",
+            embed=embed
         )
-        await interaction.response.send_message("✅", ephemeral=True)
+        await interaction.response.send_message("Quote submitted!", ephemeral=True)
 
     with open('configs/birthdays.json') as fp:
-        birthdays:dict = json.load(fp)
+        birthdays: dict[str, str] = json.load(fp)
 
     @bot.tree.context_menu(name="Check Birthday")
-    async def birthday_context(interaction:discord.Interaction, member:discord.Member):
+    async def birthday_context(interaction: discord.Interaction, member: discord.Member):
         """Looks through the birthday file for the user and lets the user know if it found anything."""
         
         for user_id, birthday in birthdays.items():
@@ -190,11 +190,11 @@ async def setup(bot:toof.ToofBot):
         
     @bot.tree.command(name="birthday", description="Tell Toof your birthday.")
     @discord.app_commands.describe(birthday="Format as mm/dd/yyyy.")
-    async def birthday_update(interaction:discord.Interaction, birthday:str):
+    async def birthday_update(interaction: discord.Interaction, birthday: str):
         """Allows users to add their birthdays to the file."""
         
         try:
-            day = dt.datetime.strptime(birthday, "%m/%d/%Y")
+            day = datetime.datetime.strptime(birthday, "%m/%d/%Y")
         # Formatting went wrong
         except ValueError:
             await interaction.response.send_message("woof! (mm/dd/yyyy)", ephemeral=True)
