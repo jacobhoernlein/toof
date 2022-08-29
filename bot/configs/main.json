@@ -40,6 +40,12 @@
                 "emoji": "👑"
             },
             {
+                "name": "Minecraft",
+                "id": 1013795450555473991,
+                "description": "Creeper.",
+                "emoji": "🟩"
+            },
+            {
                 "name": "OMORI",
                 "id": 1012724189112836126,
                 "description": "Everything is going to be okay.",
@@ -49,27 +55,27 @@
         "pronouns": [
             {
                 "name": "He/Him",
-                "id": 1013494611978752070,
-                "description": "Guys",
-                "emoji": "\u2642\ufe0f"
+                "id": 1013546098092159030,
+                "description": "I am a guy.",
+                "emoji": "👨"
             },
             {
                 "name": "She/Her",
-                "id": 1013494682245935184,
-                "description": "Gals",
-                "emoji": "\u2640\ufe0f"
+                "id": 1013546495519228035,
+                "description": "I am a gal.",
+                "emoji": "👩"
             },
             {
                 "name": "They/Them",
-                "id": 1013494729620603042,
-                "description": "Thems",
-                "emoji": "\ud83d\ude0e"
+                "id": 1013546834746163220,
+                "description": "I am a person.",
+                "emoji": "🧑"
             },
             {
-                "name": "Other",
-                "id": 1013494790647722045,
-                "description": "IDFK",
-                "emoji": "\ud83e\udd14"
+                "name": "Any/All",
+                "id": 1013546951742083164,
+                "description": "Yes.",
+                "emoji": "🃏"
             }
         ]
     }
