@@ -360,10 +360,7 @@ async def setup(bot: toof.ToofBot):
                 ephemeral=True
             )
 
-    bot.tree.add_command(RoleConfig(
-        name="role", 
-        description="Role creation and deletion.")
-    )
+    bot.tree.add_command(RoleConfig(name="role", description="Role creation and deletion."))
 
     @bot.event
     async def on_guild_role_delete(role: discord.Role):
