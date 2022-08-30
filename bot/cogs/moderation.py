@@ -119,7 +119,10 @@ class ModmailModal(discord.ui.Modal):
             icon_url=interaction.user.avatar.url
         )
 
-        await self.bot.config.log_channel.send(embed=embed)
+        await self.bot.config.log_channel.send(
+            content=f"{self.bot.config.mod_role.mention} New Modmail:",
+            embed=embed
+        )
         await interaction.response.send_message(content="Modmail sent.", ephemeral=True)
 
 async def setup(bot: toof.ToofBot):

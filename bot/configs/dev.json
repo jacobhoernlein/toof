@@ -6,6 +6,7 @@
         "quotes": 979467616294952971
     },
     "roles": {
+        "mod": 1,
         "pings": [
             {
                 "name": "Announcements",
