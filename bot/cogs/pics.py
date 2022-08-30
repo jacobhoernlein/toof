@@ -338,7 +338,7 @@ async def setup(bot: toof.ToofBot):
         for pic_id in pic_ids:
             collections[user_id].append(toofpics.find_pic(pic_id))
 
-    @bot.tree.command(name="collection", description="See what Toof pics you've collected.")
+    @bot.tree.command(name="pics", description="See what Toof pics you've collected.")
     async def toof_pic_collection(interaction: discord.Interaction):
         """Allows users to see their collection of pics."""
         
@@ -390,8 +390,7 @@ async def setup(bot: toof.ToofBot):
         
         await interaction.response.send_message(embed=pic.embed())
 
-    @bot.tree.command(name="addtoofpic", description="Add a new toofpic with a given image link.")
-    @discord.app_commands.guild_only()
+    @bot.tree.command(name="newpic", description="Add a new Toof pic with a given image link.")
     @discord.app_commands.describe(rarity="The rarity of the new ToofPic.", link="A link to the picture.")
     @discord.app_commands.choices(rarity=[
         discord.app_commands.Choice(name="Common", value='common'),
