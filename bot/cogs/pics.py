@@ -36,10 +36,10 @@ class ToofPic:
         return True if self.id < pic.id else False
 
 
-class ToofPics(list[ToofPic]):
+class ToofPics(list(ToofPic)):
     """A list of ToofPics"""
 
-    def commons(self) -> list[ToofPic]:
+    def commons(self) -> list(ToofPic):
         """Returns a list of ToofPics that are common."""
         common_list = []
         for toof_pic in self:
@@ -47,7 +47,7 @@ class ToofPics(list[ToofPic]):
                 common_list.append(toof_pic)
         return sorted(common_list)
     
-    def rares(self) -> list[ToofPic]:
+    def rares(self) -> list(ToofPic):
         """Returns a list of ToofPics that are rare."""
         rare_list = []
         for toof_pic in self:
@@ -55,7 +55,7 @@ class ToofPics(list[ToofPic]):
                 rare_list.append(toof_pic)
         return sorted(rare_list)
 
-    def legendaries(self) -> list[ToofPic]:
+    def legendaries(self) -> list(ToofPic):
         """Returns a list of ToofPics that are legendary."""
         legendary_list = []
         for toof_pic in self:
