@@ -112,7 +112,7 @@ class ToofBot(commands.Bot):
         
         # Loads bot's extensions
         async def load_extensions():
-            for filename in os.listdir('cogs'):
+            for filename in os.listdir('src/cogs'):
                 if filename.endswith('.py'):
                     await self.load_extension(f'cogs.{filename[:-3]}')
         asyncio.run(load_extensions()) 
