@@ -5,15 +5,20 @@ bot online.
 """
 
 from dataclasses import dataclass
-import datetime
+from datetime import datetime
 import os
 import sys
 import json
 import asyncio
 
+import random
+from time import time
+random.seed(time())
+
 import discord
 from discord.ext import commands
-  
+
+
 @dataclass
 class ConfigRole:
     """Class containing a role and information on that role."""
@@ -30,7 +35,7 @@ class Config:
         self.filename = configfile
 
         self.server:discord.Guild = None
-        self.voiceusers: dict[int, datetime.datetime] = {}
+        self.voiceusers: dict[int, datetime] = {}
 
         self.log_channel:discord.TextChannel = None
         self.main_channel:discord.TextChannel = None
@@ -118,7 +123,7 @@ class ToofBot(commands.Bot):
 
         for voice_channel in self.config.server.voice_channels:
             for member in voice_channel.members:
-                self.config.voiceusers[member.id] = datetime.datetime.now()
+                self.config.voiceusers[member.id] = datetime.now()
 
         print("\
  _____             __   ___       _   \n\
