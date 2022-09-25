@@ -1,8 +1,15 @@
-"""Cog that contains functionality for users to assign themselves roles."""
+"""
+Extension that allows users to assign roles to themselves, and allows
+moderators to create new roles with descriptions and emojis for the
+users to give to themselves.
+"""
 
 import json
+
 from emoji import is_emoji
 import discord
+from discord.ext import commands
+
 import toof
 
 
@@ -313,60 +320,60 @@ class RoleDeleteConfirmView(discord.ui.View):
         )
 
 
-async def setup(bot: toof.ToofBot):
+class RolesCog(commands.Cog):
+    """Cog containing commands relating to roles."""
 
-    @bot.tree.command(name="roles", description="Give yourself some roles. Take away some roles. Yeah.")
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
+
+    @discord.app_commands.command(name="roles", description="Give yourself some roles. Take away some roles. Yeah.")
     @discord.app_commands.guild_only()
-    async def role_menu(interaction: discord.Interaction):
+    async def role_menu(self, interaction: discord.Interaction):
         """Sends the user the role add menu."""
         
         await interaction.response.send_message(
-            view=RoleAddView(interaction, bot, 'pings'),
+            view=RoleAddView(interaction, self.bot, 'pings'),
             ephemeral=True
         )
 
+    @discord.app_commands.command(name="createrole", description="Create a role that users can give themselves.")
+    @discord.app_commands.choices(
+        type=[
+            discord.app_commands.Choice(name="Pings", value=1),
+            discord.app_commands.Choice(name="Gaming", value=2),
+            discord.app_commands.Choice(name="Pronouns", value=3),
+        ]
+    )
+    @discord.app_commands.describe(type="What type of role to create.")
     @discord.app_commands.guild_only()
-    class RoleConfig(discord.app_commands.Group):
-        """Group that contains the role create and role delete commands."""
-
-        @discord.app_commands.command(name="create", description="Create a role that users can give themselves.")
-        @discord.app_commands.choices(
-            type=[
-                discord.app_commands.Choice(name="Pings", value=1),
-                discord.app_commands.Choice(name="Gaming", value=2),
-                discord.app_commands.Choice(name="Pronouns", value=3),
-            ]
-        )
-        @discord.app_commands.describe(type="What type of role to create.")
-        async def add_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
-            """Sends the user a modal to create a new role of a given type."""
-            
-            await interaction.response.send_modal(RoleCreateModal(bot, type.name.lower(), title=f"Create a new {type.name} role:"))
+    async def create_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
+        """Sends the user a modal to create a new role of a given type."""
+        
+        await interaction.response.send_modal(RoleCreateModal(self.bot, type.name.lower(), title=f"Create a new {type.name} role:"))
     
-        @discord.app_commands.command(name="delete", description="Get rid of a certain role.")
-        @discord.app_commands.choices(
-            type=[
-                discord.app_commands.Choice(name="Pings", value=1),
-                discord.app_commands.Choice(name="Gaming", value=2),
-                discord.app_commands.Choice(name="Pronouns", value=3),
-            ]
+    @discord.app_commands.command(name="deleterole", description="Get rid of a certain role.")
+    @discord.app_commands.choices(
+        type=[
+            discord.app_commands.Choice(name="Pings", value=1),
+            discord.app_commands.Choice(name="Gaming", value=2),
+            discord.app_commands.Choice(name="Pronouns", value=3),
+        ]
+    )
+    @discord.app_commands.describe(type="What type of role to delete.")
+    @discord.app_commands.guild_only()
+    async def delete_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
+        """Sends the user a menu to select a role to delete."""
+        
+        await interaction.response.send_message(
+            view=RoleDeleteView(self.bot, type.name.lower()),
+            ephemeral=True
         )
-        @discord.app_commands.describe(type="What type of role to delete.")
-        async def delete_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
-            """Sends the user a menu to select a role to delete."""
-            
-            await interaction.response.send_message(
-                view=RoleDeleteView(bot, type.name.lower()),
-                ephemeral=True
-            )
 
-    bot.tree.add_command(RoleConfig(name="role", description="Role creation and deletion."))
-
-    @bot.event
-    async def on_guild_role_delete(role: discord.Role):
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
         """Removes the role from the config if it was created through commands."""
 
-        with open(bot.config.filename) as fp:
+        with open(self.bot.config.filename) as fp:
             config = json.load(fp)
 
         for role_type in ['pings', 'gaming', 'pronouns']:
@@ -374,11 +381,15 @@ async def setup(bot: toof.ToofBot):
             for i in range(len(config['roles'][role_type])):
                 if config['roles'][role_type][i]['id'] == role.id:
                     del config['roles'][role_type][i]
-                    with open(bot.config.filename, "w") as fp:
+                    with open(self.bot.config.filename, "w") as fp:
                         json.dump(config, fp, indent=4)
                     break
             # Finds the config role in the bot and removes it.
-            for config_role in bot.config.roles[role_type]:
+            for config_role in self.bot.config.roles[role_type]:
                 if config_role.role == role:
-                    bot.config.roles[role_type].remove(config_role)
+                    self.bot.config.roles[role_type].remove(config_role)
                     return
+
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(RolesCog(bot))

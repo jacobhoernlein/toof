@@ -1,4 +1,8 @@
-"""Cog that contains twitter functionality."""
+"""
+Extension that includes twitter functionality. Used to provide a
+stream of tweets into a channel, now just randomly tweets messages
+from the server.
+"""
 
 import os
 from random import randint
@@ -10,7 +14,7 @@ import tweepy
 import toof
 
 
-class ToofTwitter(commands.Cog):
+class TwitterCog(commands.Cog):
     """Cog that contains Twitter functionality."""
 
     def __init__(self, bot: toof.ToofBot):
@@ -41,4 +45,4 @@ class ToofTwitter(commands.Cog):
 
     
 async def setup(bot: toof.ToofBot):
-    await bot.add_cog(ToofTwitter(bot))
+    await bot.add_cog(TwitterCog(bot))

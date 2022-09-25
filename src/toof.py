@@ -5,7 +5,6 @@ bot online.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
 import os
 import sys
 import json
@@ -35,7 +34,6 @@ class Config:
         self.filename = configfile
 
         self.server:discord.Guild = None
-        self.voiceusers: dict[int, datetime] = {}
 
         self.log_channel:discord.TextChannel = None
         self.main_channel:discord.TextChannel = None
@@ -121,17 +119,13 @@ class ToofBot(commands.Bot):
         self.config.load()
         await self.tree.sync()
 
-        for voice_channel in self.config.server.voice_channels:
-            for member in voice_channel.members:
-                self.config.voiceusers[member.id] = datetime.now()
-
-        print("\
- _____             __   ___       _   \n\
-/__   \___   ___  / _| / __\ ___ | |_ \n\
-  / /\/ _ \ / _ \| |_ /__\/// _ \| __|\n\
- / / | (_) | (_) |  _/ \/  \ (_) | |_ \n\
- \/   \___/ \___/|_| \_____/\___/ \__|\n\
-                     Running Toof v2.3"
+        print("""
+ _____             __   ___       _   
+/__   \___   ___  / _| / __\ ___ | |_ 
+  / /\/ _ \ / _ \| |_ /__\/// _ \| __|
+ / / | (_) | (_) |  _/ \/  \ (_) | |_ 
+ \/   \___/ \___/|_| \_____/\___/ \__|
+                     Running Toof v2.3"""
         )
 
 

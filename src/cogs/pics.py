@@ -1,10 +1,15 @@
-"""Includes functionality for ToofPics"""
+"""
+Extension that implements the really cool Toof Pic system. Users get
+a pic using /pic, then receive a random pic of a certain rarity.
+Then they can see their entire collection using /pics.
+"""
 
 from dataclasses import dataclass
 import json
 import random
 
 import discord
+from discord.ext import commands
 
 import toof
 
@@ -37,7 +42,7 @@ class ToofPic:
 
 
 class ToofPics(list[ToofPic]):
-    """A list of ToofPics"""
+    """A list of ToofPics, as well as methods relating."""
 
     def commons(self) -> list[ToofPic]:
         """Returns a list of ToofPics that are common."""
@@ -314,68 +319,53 @@ class ToofPicCollectionView(discord.ui.View):
             self.add_item(ToofPicNextButton(series, collection, page, pic))
             self.add_item(ToofPicShareButton(pic))
 
-    
-async def setup(bot: toof.ToofBot):
-    
-    with open('configs/pics.json') as fp:
-        pic_json = json.load(fp)
 
-    toofpics = ToofPics()
-    for pic_dict in pic_json:
-        toofpic = ToofPic(
-            link=pic_dict['link'],
-            rarity=pic_dict['rarity'],
-            id=pic_dict['id']
-        )
-        toofpics.append(toofpic)
+class ToofPicsCog(commands.Cog):
+    """Cog which contains commands to interact with the Toof Pics extension."""
 
-    with open('configs/collections.json') as fp:
-        collection_json: dict[str, list[str]] = json.load(fp)
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
 
-    collections: dict[str, ToofPics] = {}
-    for user_id, pic_ids in collection_json.items():
-        collections[user_id] = ToofPics()
-        for pic_id in pic_ids:
-            collections[user_id].append(toofpics.find_pic(pic_id))
+        with open('configs/pics.json') as fp:
+            pic_json = json.load(fp)
 
-    @bot.tree.command(name="pics", description="See what Toof pics you've collected.")
-    async def toof_pic_collection(interaction: discord.Interaction):
-        """Allows users to see their collection of pics."""
-        
-        try:
-            collection = collections[str(interaction.user.id)]
-        except KeyError:
-            await interaction.response.send_message(
-                content="You don't have any Toof pics! Use /pic to find some.",
-                ephemeral=True
+        self.toofpics = ToofPics()
+        for pic_dict in pic_json:
+            toofpic = ToofPic(
+                link=pic_dict['link'],
+                rarity=pic_dict['rarity'],
+                id=pic_dict['id']
             )
-            return
+            self.toofpics.append(toofpic)
 
-        await interaction.response.send_message(
-            embed=collection.overview(toofpics),
-            view=ToofPicCollectionView(toofpics, collection, 'overview'),
-            ephemeral=True
-        )
+        with open('configs/collections.json') as fp:
+            collection_json: dict[str, list[str]] = json.load(fp)
 
-    @bot.tree.command(name="pic", description="Get a random Toof pic.")
-    async def toof_pic_command(interaction: discord.Interaction):
+        self.collections: dict[str, ToofPics] = {}
+        for user_id, pic_ids in collection_json.items():
+            self.collections[user_id] = ToofPics()
+            for pic_id in pic_ids:
+                self.collections[user_id].append(self.toofpics.find_pic(pic_id))
+
+    @discord.app_commands.command(name="pic", description="Get a random Toof pic.")
+    async def toof_pic_command(self, interaction: discord.Interaction):
         """Selects a rarity based on chance, opens that a file of that rarity, and sends it."""
 
         user_id = str(interaction.user.id)
 
         num = random.randint(1, 256)
         if num >= 1 and num <= 3:
-            pic = toofpics.rand_legendary()
+            pic = self.toofpics.rand_legendary()
         elif num >= 4 and num <= 25:
-            pic = toofpics.rand_rare()
+            pic = self.toofpics.rand_rare()
         else:
-            pic = toofpics.rand_common()
+            pic = self.toofpics.rand_common()
 
-        if user_id not in collections.keys():
-            collections[user_id] = ToofPics()
+        if user_id not in self.collections.keys():
+            self.collections[user_id] = ToofPics()
 
-        if pic not in collections[user_id]:
-            collections[user_id].append(pic)
+        if pic not in self.collections[user_id]:
+            self.collections[user_id].append(pic)
 
             with open('configs/collections.json') as fp:
                 collection_json: dict[str, list[str]] = json.load(fp)
@@ -390,28 +380,47 @@ async def setup(bot: toof.ToofBot):
         
         await interaction.response.send_message(embed=pic.embed())
 
-    @bot.tree.command(name="newpic", description="Add a new Toof pic with a given image link.")
+    @discord.app_commands.command(name="pics", description="See what Toof pics you've collected.")
+    async def toof_pic_collection(self, interaction: discord.Interaction):
+        """Allows users to see their collection of pics."""
+        
+        try:
+            collection = self.collections[str(interaction.user.id)]
+        except KeyError:
+            await interaction.response.send_message(
+                content="You don't have any Toof pics! Use /pic to find some.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.send_message(
+            embed=collection.overview(self.toofpics),
+            view=ToofPicCollectionView(self.toofpics, collection, 'overview'),
+            ephemeral=True
+        )
+
+    @discord.app_commands.command(name="newpic", description="Add a new Toof pic with a given image link.")
     @discord.app_commands.describe(rarity="The rarity of the new ToofPic.", link="A link to the picture.")
     @discord.app_commands.choices(rarity=[
         discord.app_commands.Choice(name="Common", value='common'),
         discord.app_commands.Choice(name="Rare", value='rare'),
         discord.app_commands.Choice(name="Legendary", value='legendary')
     ])
-    async def toof_pic_add(interaction: discord.Interaction, rarity: discord.app_commands.Choice[str], link: str):
+    async def toof_pic_add(self, interaction: discord.Interaction, rarity: discord.app_commands.Choice[str], link: str):
         
         if interaction.user.id != 243845903146811393:
             await interaction.response.send_message(content="You can't do that!", ephemeral=True)
             return
 
         if rarity.value == 'common':
-            id = f"C{(len(toofpics)+1):03d}"
+            id = f"C{(len(self.toofpics)+1):03d}"
         if rarity.value == 'rare':
-            id = f"R{(len(toofpics)+1):03d}"
+            id = f"R{(len(self.toofpics)+1):03d}"
         if rarity.value == 'legendary':
-            id = f"L{(len(toofpics)+1):03d}"
+            id = f"L{(len(self.toofpics)+1):03d}"
 
         toofpic = ToofPic(link, rarity.value, id)
-        toofpics.append(toofpic)
+        self.toofpics.append(toofpic)
 
         pic_dict = {
             'link': link,
@@ -426,3 +435,6 @@ async def setup(bot: toof.ToofBot):
     
         await interaction.response.send_message(content="Pic Added:", embed=toofpic.embed(), ephemeral=True)
         
+    
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(ToofPicsCog(bot))

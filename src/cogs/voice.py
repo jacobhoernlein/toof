@@ -1,32 +1,52 @@
-"""Handles voice commands"""
+"""
+Extension that includes voice functionality. Used to be a music bot,
+now just tracks how long users were in a channel for.
+"""
 
-import datetime
+from datetime import datetime, timedelta
+
 import discord
+from discord.ext import commands
+
 import toof
 
 
-async def setup(bot: toof.ToofBot):
+class VoiceCog(commands.Cog):
 
-    # Watches for when member joins or leaves voice, then updates the dictionary.
-    @bot.event
-    async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
+        self.voiceusers: dict[int, datetime] = {}
+
+        self.check_voice_time_context = discord.app_commands.ContextMenu(
+            name="Check Voice Time",
+            callback=self.check_voice_time_callback
+        )
+        self.bot.tree.add_command(self.check_voice_time_context)
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        for voice_channel in self.bot.config.server.voice_channels:
+            for member in voice_channel.members:
+                self.voiceusers[member.id] = datetime.now()
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         # Member joins a voice channel
-        if after.channel and member.id not in bot.config.voiceusers.keys():
-            bot.config.voiceusers[member.id] = datetime.datetime.now()
+        if after.channel and member.id not in self.voiceusers.keys():
+            self.voiceusers[member.id] = datetime.now()
         # Member leaves voice
-        if not after.channel and member.id in bot.config.voiceusers.keys():
-            del bot.config.voiceusers[member.id]
+        if not after.channel and member.id in self.voiceusers.keys():
+            del self.voiceusers[member.id]
 
-    @bot.tree.context_menu(name="Check Voice Time")
     @discord.app_commands.guild_only()
-    async def check_voice_time(interaction: discord.Interaction, member: discord.Member):
+    async def check_voice_time_callback(self, interaction: discord.Interaction, member: discord.Member):
         """Checks how long you've been in a voice channel"""
         
-        if member.id not in bot.config.voiceusers.keys():
+        if member.id not in self.voiceusers.keys():
             await interaction.response.send_message(content=f"{member.mention} isn't in a voice channel!", ephemeral=True)
             return
 
-        delta:datetime.timedelta = datetime.datetime.now() - bot.config.voiceusers[member.id]
+        delta: timedelta = datetime.now() - self.voiceusers[member.id]
         
         seconds = delta.seconds
         days = delta.days
@@ -43,3 +63,6 @@ async def setup(bot: toof.ToofBot):
 
         await interaction.response.send_message(content=string, ephemeral=True)
         
+    
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(VoiceCog(bot))

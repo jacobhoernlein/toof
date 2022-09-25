@@ -1,4 +1,8 @@
-"""Moderation commands and features"""
+"""
+Extension which contains the moderation cog, which allows the bot to listen
+for deleted and edited messages, as well as accept modmails and ban people for
+listening to Doja Cat (real).
+"""
 
 import discord
 from discord.ext import commands
@@ -6,8 +10,47 @@ from discord.ext import commands
 import toof
 
 
-class ToofMod(commands.Cog):
-    """Events that implement moderation functionality"""
+class ModmailModal(discord.ui.Modal):
+    """Modal to be sent to users running the Modmail command"""
+
+    def __init__(self, bot: toof.ToofBot, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bot = bot
+
+    subject = discord.ui.TextInput(
+        label="Subject",
+        style=discord.TextStyle.short,
+        placeholder="A short summary of what's wrong.",
+        max_length=50
+    )
+    details = discord.ui.TextInput(
+        label="Details",
+        style=discord.TextStyle.long,
+        placeholder="Give us more details on what exactly happened."
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        
+        embed = discord.Embed(
+            color=discord.Color.blue(),
+            description=self.details.value,
+            timestamp=interaction.created_at
+        )
+        embed.set_author(name=f"RE: {self.subject.value}")
+        embed.set_footer(
+            text=f"From {interaction.user}", 
+            icon_url=interaction.user.avatar.url
+        )
+
+        await self.bot.config.log_channel.send(
+            content=f"{self.bot.config.mod_role.mention} New Modmail:",
+            embed=embed
+        )
+        await interaction.response.send_message(content="Modmail sent.", ephemeral=True)
+
+
+class ModCog(commands.Cog):
+    """Cog containing listeners for message editing/deleting and status updates."""
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
@@ -86,48 +129,11 @@ class ToofMod(commands.Cog):
                     await after.send(f"You were kicked for {reason}")
                     await after.kick(reason=reason)
                     
+    @discord.app_commands.command(name="modmail", description="Something bothering you? Tell the mods.")
+    async def mod_mail(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(ModmailModal(self.bot, title="New Modmail"))
 
-class ModmailModal(discord.ui.Modal):
-    """Modal to be sent to users running the Modmail command"""
-
-    def __init__(self, bot: toof.ToofBot, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.bot = bot
-
-    subject = discord.ui.TextInput(
-        label="Subject",
-        style=discord.TextStyle.short,
-        placeholder="A short summary of what's wrong.",
-        max_length=50
-    )
-    details = discord.ui.TextInput(
-        label="Details",
-        style=discord.TextStyle.long,
-        placeholder="Give us more details on what exactly happened."
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        
-        embed = discord.Embed(
-            color=discord.Color.blue(),
-            description=self.details.value,
-            timestamp=interaction.created_at
-        )
-        embed.set_author(name=f"RE: {self.subject.value}")
-        embed.set_footer(
-            text=f"From {interaction.user}", 
-            icon_url=interaction.user.avatar.url
-        )
-
-        await self.bot.config.log_channel.send(
-            content=f"{self.bot.config.mod_role.mention} New Modmail:",
-            embed=embed
-        )
-        await interaction.response.send_message(content="Modmail sent.", ephemeral=True)
 
 async def setup(bot: toof.ToofBot):
-    await bot.add_cog(ToofMod(bot))
+    await bot.add_cog(ModCog(bot))
     
-    @bot.tree.command(name="modmail", description="Something bothering you? Tell the mods.")
-    async def mod_mail(interaction: discord.Interaction):
-        await interaction.response.send_modal(ModmailModal(bot, title="New Modmail"))
