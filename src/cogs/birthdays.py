@@ -31,7 +31,6 @@ class BirthdayCog(commands.Cog):
     async def on_ready(self):
         self.check_day.start()
 
-    @commands.Cog.listener()
     def cog_unload(self):
         self.check_day.stop()
 
@@ -86,3 +85,4 @@ class BirthdayCog(commands.Cog):
 
 async def setup(bot: toof.ToofBot):
     await bot.add_cog(BirthdayCog(bot))
+    

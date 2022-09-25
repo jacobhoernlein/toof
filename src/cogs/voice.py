@@ -66,3 +66,4 @@ class VoiceCog(commands.Cog):
     
 async def setup(bot: toof.ToofBot):
     await bot.add_cog(VoiceCog(bot))
+    

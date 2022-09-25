@@ -31,20 +31,40 @@ class MiscCog(commands.Cog):
     async def change_status(self):
         """Changes the status on a 180s loop"""
 
-        await self.bot.change_presence(activity=choice(self.bot.config.activities))
+        activities = [
+            discord.Activity(
+                type=discord.ActivityType.watching,
+                name="the mailman"
+            ),
+            discord.Activity(
+                type=discord.ActivityType.watching,
+                name="you pee"
+            ),
+            discord.Activity(
+                type=discord.ActivityType.listening,
+                name="bees"
+            ),
+            discord.Activity(
+                type=discord.ActivityType.listening,
+                name="february face"
+            ),
+            discord.Activity(
+                type=discord.ActivityType.playing,
+                name="with a ball"
+            )
+        ]
 
-    @tasks.loop(seconds=60)
+        await self.bot.change_presence(activity=choice(activities))
+
+    @tasks.loop(hours=24)
     async def check_time(self):
         """Sends a good morning happy friday gif at certain time"""
         
         main_channel = self.bot.config.main_channel
         now = datetime.datetime.now()
     
-        # Automated messages will be sent at noon
-        if now.hour == 12 and now.minute == 00:
-            # Checks to see if it's Friday
-            if now.weekday() == 4:
-                await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
+        if now.weekday() == 4:
+            await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
 
     # Replies to messages that have certain phrases in them    
     @commands.Cog.listener()

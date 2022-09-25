@@ -4,7 +4,6 @@ run with --main or --dev arguments to bring
 bot online.
 """
 
-from dataclasses import dataclass
 import os
 import sys
 import json
@@ -18,15 +17,7 @@ import discord
 from discord.ext import commands
 
 
-@dataclass
-class ConfigRole:
-    """Class containing a role and information on that role."""
-    role: discord.Role
-    description: str
-    emoji: discord.PartialEmoji
-
-
-class Config:
+class ToofConfig:
     """Class that includes information on Roles and Channels of a discord.Guild."""
 
     def __init__(self, bot:"ToofBot", configfile:str):
@@ -39,31 +30,7 @@ class Config:
         self.main_channel:discord.TextChannel = None
         self.quotes_channel:discord.TextChannel = None
         
-        self.roles: dict[str, list[ConfigRole]] = {}
         self.mod_role: discord.Role = None
-
-        self.activities:list[discord.Activity] = [
-            discord.Activity(
-                type=discord.ActivityType.watching,
-                name="the mailman"
-            ),
-            discord.Activity(
-                type=discord.ActivityType.watching,
-                name="you pee"
-            ),
-            discord.Activity(
-                type=discord.ActivityType.listening,
-                name="bees"
-            ),
-            discord.Activity(
-                type=discord.ActivityType.listening,
-                name="february face"
-            ),
-            discord.Activity(
-                type=discord.ActivityType.playing,
-                name="with a ball"
-            )
-        ]
 
     def load(self):
         """Loads the config from the config file"""
@@ -84,18 +51,7 @@ class Config:
         )
 
         self.mod_role = discord.utils.find(lambda r: r.id == config['roles']['mod'], self.server.roles)
-        for role_type in ['pings', 'gaming', 'pronouns']:
-            self.roles[role_type] = [
-                ConfigRole(
-                    role=discord.utils.find(
-                        lambda r: r.id == role_dict['id'], 
-                        self.server.roles
-                    ),
-                    description=role_dict['description'],
-                    emoji=discord.PartialEmoji.from_str(role_dict['emoji'])
-                ) for role_dict in config['roles'][role_type]
-            ]
-
+        
 
 class ToofBot(commands.Bot):
     """Subclass of commands.Bot that includes neccessary configs and cleanups for toof."""
@@ -106,7 +62,7 @@ class ToofBot(commands.Bot):
         Other args are the same as commands.Bot.
         """
         super().__init__(*args, **kwargs)
-        self.config = Config(self, configfile)
+        self.config = ToofConfig(self, configfile)
         
         # Loads bot's extensions
         async def load_extensions():
