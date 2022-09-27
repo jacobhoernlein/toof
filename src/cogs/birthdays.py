@@ -80,7 +80,7 @@ class BirthdayCog(commands.Cog):
         with open("configs/birthdays.json", "w") as fp:
             json.dump(self.birthdays, fp, indent=4)
 
-        await interaction.response.send_message("✅", ephemeral=True)
+        await interaction.response.send_message("oki 👍", ephemeral=True)
           
 
 async def setup(bot: toof.ToofBot):
