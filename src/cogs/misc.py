@@ -21,11 +21,11 @@ class MiscCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.change_status.start()
-        self.check_time.start()
+        self.check_day.start()
 
     def cog_unload(self):
         self.change_status.cancel()
-        self.check_time.cancel()
+        self.check_day.cancel()
 
     @tasks.loop(seconds=180)
     async def change_status(self):
@@ -57,12 +57,12 @@ class MiscCog(commands.Cog):
         await self.bot.change_presence(activity=choice(activities))
 
     @tasks.loop(hours=24)
-    async def check_time(self):
+    async def check_day(self):
         """Sends a good morning happy friday gif at certain time"""
         
-        main_channel = self.bot.config.main_channel
+        main_channel = self.bot.config.welcome_channel
         now = datetime.datetime.now()
-    
+
         if now.weekday() == 4:
             await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
 

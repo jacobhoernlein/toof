@@ -57,7 +57,7 @@ class QuotesCog(commands.Cog):
                 )
             )
         )
-        await interaction.response.send_message("Quote submitted!", ephemeral=True)
+        await interaction.response.send_message("quote sent 😎", ephemeral=True)
 
     @discord.app_commands.command(
         name="quote",
@@ -85,7 +85,7 @@ class QuotesCog(commands.Cog):
             content=f"Quote submitted by {interaction.user.mention}:",
             embed=embed
         )
-        await interaction.response.send_message("Quote submitted!", ephemeral=True)
+        await interaction.response.send_message("quote sent 😎", ephemeral=True)
 
 
 async def setup(bot: toof.ToofBot):

@@ -184,7 +184,7 @@ class ToofPicCollectionSelect(discord.ui.Select):
             pic = pics[0]
             embed = pic.embed()
         else:
-            content = f"You haven't found any {page} pics."
+            content = f"u havent found any {page} pics!"
             pic = None
             embed = None
 
@@ -388,7 +388,7 @@ class ToofPicsCog(commands.Cog):
             collection = self.collections[str(interaction.user.id)]
         except KeyError:
             await interaction.response.send_message(
-                content="You don't have any Toof pics! Use /pic to find some.",
+                content="u dont have any Toof pics! use /pic to find sum.",
                 ephemeral=True
             )
             return
@@ -409,7 +409,7 @@ class ToofPicsCog(commands.Cog):
     async def toof_pic_add(self, interaction: discord.Interaction, rarity: discord.app_commands.Choice[str], link: str):
         
         if interaction.user.id != 243845903146811393:
-            await interaction.response.send_message(content="You can't do that!", ephemeral=True)
+            await interaction.response.send_message(content="woof !u cant do that!", ephemeral=True)
             return
 
         if rarity.value == 'common':
@@ -433,7 +433,7 @@ class ToofPicsCog(commands.Cog):
         with open('configs/pics.json', 'w') as fp:
             json.dump(pic_json, fp, indent=4)
     
-        await interaction.response.send_message(content="Pic Added:", embed=toofpic.embed(), ephemeral=True)
+        await interaction.response.send_message(content="pic added:", embed=toofpic.embed(), ephemeral=True)
         
     
 async def setup(bot: toof.ToofBot):

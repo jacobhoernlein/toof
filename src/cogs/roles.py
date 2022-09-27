@@ -201,7 +201,7 @@ class RoleCreateModal(discord.ui.Modal):
             color = discord.Color.from_str(self.color.value)
         except ValueError:
             await interaction.response.send_message(
-                content="Invalid color code. Try again. Accepts hex format (`#ffffff`).",
+                content="wats that color??? (Invalid color code. Try again. Accepts hex format `#ffffff`).",
                 ephemeral=True
             )
             return
@@ -234,7 +234,7 @@ class RoleCreateModal(discord.ui.Modal):
         with open(self.filename, "w") as fp:
             json.dump(config, fp, indent=4)
 
-        await interaction.response.send_message(content=f"Created {role.mention}!", ephemeral=True)
+        await interaction.response.send_message(content=f"made {role.mention}!", ephemeral=True)
 
 
 class RoleDeleteSelect(discord.ui.Select):
@@ -275,7 +275,7 @@ class RoleDeleteSelect(discord.ui.Select):
         # Then prompts the user if they really want to delete that role.
         role = discord.utils.find(lambda r: r.id == int(self.values[0]), self.role_list)
         await interaction.response.edit_message(
-            content=f"Delete {role.mention}?",
+            content=f"delete {role.mention}?",
             view=RoleDeleteConfirmView(role),
         )
 
@@ -310,7 +310,7 @@ class RoleDeleteConfirmView(discord.ui.View):
 
         await self.role.delete()
         await interaction.response.edit_message(
-            content=f"Deleted `{self.role.name}`.",
+            content=f"deleted `{self.role.name}`.",
             view=None
         )
         
@@ -323,7 +323,7 @@ class RoleDeleteConfirmView(discord.ui.View):
         """Aborts the deletion."""
         
         await interaction.response.edit_message(
-            content=f"Didn't delete {self.role.mention}",
+            content=f"didnt delete {self.role.mention}",
             view=None
         )
 

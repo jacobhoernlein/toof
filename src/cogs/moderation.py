@@ -126,7 +126,7 @@ class ModCog(commands.Cog):
             if isinstance(activity, discord.Spotify):
                 if activity.title == "Say So" and activity.artist == "Doja Cat":
                     reason = "Listening to Say So by Doja Cat"
-                    await after.send(f"You were kicked for {reason}")
+                    await after.send(f"u were kickd 4 \"{reason}\" :(")
                     await after.kick(reason=reason)
                     
     @discord.app_commands.command(name="modmail", description="Something bothering you? Tell the mods.")

@@ -12,6 +12,7 @@ import toof
 
 
 class VoiceCog(commands.Cog):
+    """Cog that watches for voice updates."""
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
@@ -43,7 +44,7 @@ class VoiceCog(commands.Cog):
         """Checks how long you've been in a voice channel"""
         
         if member.id not in self.voiceusers.keys():
-            await interaction.response.send_message(content=f"{member.mention} isn't in a voice channel!", ephemeral=True)
+            await interaction.response.send_message(content=f"{member.mention} isnt in a voice !", ephemeral=True)
             return
 
         delta: timedelta = datetime.now() - self.voiceusers[member.id]
@@ -56,10 +57,10 @@ class VoiceCog(commands.Cog):
         minutes = seconds // 60
         seconds -= minutes * 60
 
-        string = f"woof! {member.mention} has been in call for "
+        string = f"woof! {member.mention} haz been in call for "
         if days > 0:
             string += f"{days} days, "
-        string += f"{hours} hours, {minutes} minutes, and {seconds} seconds."
+        string += f"{hours} hours, {minutes} mins, and {seconds} seconds"
 
         await interaction.response.send_message(content=string, ephemeral=True)
         

@@ -38,7 +38,7 @@ class BirthdayCog(commands.Cog):
     async def check_day(self):
         """Sends a birthday message on birthdays"""
         
-        main_channel = self.bot.config.main_channel
+        main_channel = self.bot.config.welcome_channel
         now = datetime.now().strftime("%m/%d/%Y")
         
         with open('configs/birthdays.json') as fp:
@@ -59,7 +59,7 @@ class BirthdayCog(commands.Cog):
                 await interaction.response.send_message(f"woof! ({birthday})", ephemeral=True)
                 return
 
-        await interaction.response.send_message("...", ephemeral=True)
+        await interaction.response.send_message("idk ther bday!", ephemeral=True)
         
     @discord.app_commands.command(name="birthday", description="Tell Toof your birthday.")
     @discord.app_commands.describe(birthday="Format as mm/dd/yyyy.")
@@ -70,7 +70,7 @@ class BirthdayCog(commands.Cog):
             day = datetime.strptime(birthday, "%m/%d/%Y")
         # Formatting went wrong
         except ValueError:
-            await interaction.response.send_message("woof! (mm/dd/yyyy)", ephemeral=True)
+            await interaction.response.send_message("woof! you gotta format as mm/dd/yyyy", ephemeral=True)
             return
 
         # Converts day from datetime object to string, stores in library
