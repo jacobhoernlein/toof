@@ -4,7 +4,6 @@ run with --main or --dev arguments to bring
 bot online.
 """
 
-import aiosqlite
 import os
 import sys
 
@@ -12,6 +11,7 @@ import random
 from time import time
 random.seed(time())
 
+import aiosqlite
 import discord
 from discord.ext import commands
 
