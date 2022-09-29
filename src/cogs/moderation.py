@@ -42,12 +42,12 @@ class ModmailModal(discord.ui.Modal):
             icon_url=interaction.user.avatar.url
         )
 
-        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}')
-        log_channel_id: int = cursor.fetchone()[0]
-        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, interaction.guild.channels)
+        record = self.bot.db.execute(f'SELECT log_channel_id, mod_role_id FROM guilds WHERE guild_id = {interaction.guild_id}').fetchone()
+        log_channel = discord.utils.find(lambda c: c.id == record[0], interaction.guild.channels)
+        mod_role = discord.utils.find(lambda r: r.id == record[1], interaction.guild.roles)
 
         await log_channel.send(
-            content=f"{self.bot.config.mod_role.mention} New Modmail:",
+            content=f"{mod_role.mention} New Modmail:",
             embed=embed
         )
         await interaction.response.send_message(content="Modmail sent.", ephemeral=True)
@@ -59,11 +59,15 @@ class ModCog(commands.Cog):
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
       
-    # Snipes deleted messages and puts them into the mod log
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
-        if message.author.bot \
-        or message.channel == self.bot.config.log_channel:
+        """Snipes deleted messages and puts them into the erver's mod log."""
+        
+        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {message.guild.id}')
+        log_channel_id: int = cursor.fetchone()[0]
+        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, message.guild.channels)
+        
+        if message.author.bot or message.channel == log_channel:
             return
         
         embed = discord.Embed(
@@ -80,10 +84,6 @@ class ModCog(commands.Cog):
         embed.set_footer(
             text=f"Message ID: {message.id}"
         )
-
-        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {message.guild.id}')
-        log_channel_id: int = cursor.fetchone()[0]
-        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, message.guild.channels)
 
         await log_channel.send(embed=embed)
 
