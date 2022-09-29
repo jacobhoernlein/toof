@@ -44,6 +44,7 @@ class ToofBot(commands.Bot):
     async def on_resumed(self):
         self.db = await aiosqlite.connect('toof.sqlite')
     
+    
 if __name__ == "__main__":
     
     if len(sys.argv) != 2 or sys.argv[1] not in ['--main', '-m', '--dev', '-d']:
