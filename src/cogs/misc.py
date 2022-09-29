@@ -18,8 +18,7 @@ class MiscCog(commands.Cog):
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def cog_load(self):
         self.change_status.start()
         self.check_day.start()
 
@@ -63,8 +62,8 @@ class MiscCog(commands.Cog):
         if now.weekday() != 4:
             return
 
-        cursor = self.bot.db.execute('SELECT * FROM guilds')
-        guild_list = cursor.fetchall()
+        async with self.bot.db.execute('SELECT * FROM guilds') as cursor:
+            guild_list = await cursor.fetchall()
 
         for guild_item in guild_list:
             guild_id = guild_item[0]
