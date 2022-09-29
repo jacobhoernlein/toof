@@ -4,10 +4,11 @@ run with --main or --dev arguments to bring
 bot online.
 """
 
-import os
-import sys
-import json
 import asyncio
+import json
+import os
+import sqlite3
+import sys
 
 import random
 from time import time
@@ -19,35 +20,23 @@ from discord.ext import commands
 
 class ToofConfig:
     """Class that includes information on Roles and Channels of a discord.Guild."""
-
+    
     def __init__(self, bot: "ToofBot", configfile: str):
-        self.__bot: "ToofBot" = bot
+        """Loads the config from the config file"""
         self.filename = configfile
 
-        self.server: discord.Guild = None
-
-        self.log_channel: discord.TextChannel = None
-        self.welcome_channel: discord.TextChannel = None
-        self.quotes_channel: discord.TextChannel = None
-        
-        self.mod_role: discord.Role = None
-        self.member_role: discord.Role = None
-
-    def load(self):
-        """Loads the config from the config file"""
-        
         with open(self.filename) as fp:
             config = json.load(fp)
 
-        self.server = self.__bot.get_guild(config['server_id'])
+        self.server = bot.get_guild(config['server_id'])
 
-        self.log_channel = self.__bot.get_channel(
+        self.log_channel = bot.get_channel(
             config['channels']['log']
         )
-        self.welcome_channel = self.__bot.get_channel(
+        self.welcome_channel = bot.get_channel(
             config['channels']['welcome']
         )
-        self.quotes_channel = self.__bot.get_channel(
+        self.quotes_channel = bot.get_channel(
             config['channels']['quotes']
         )
 
@@ -64,8 +53,11 @@ class ToofBot(commands.Bot):
         Other args are the same as commands.Bot.
         """
         super().__init__(*args, **kwargs)
-        self.config = ToofConfig(self, configfile)
-        
+
+        self.__configfile = configfile
+        self.config: ToofConfig = None
+        self.db: sqlite3.Connection = sqlite3.connect('toof.sqlite')
+
         # Loads bot's extensions
         async def load_extensions():
             for filename in os.listdir('src/cogs'):
@@ -74,9 +66,9 @@ class ToofBot(commands.Bot):
         asyncio.run(load_extensions()) 
 
     async def on_ready(self):
-        self.config.load()
+        self.config = ToofConfig(self, self.__configfile)
         await self.tree.sync()
-
+        
         print("""
  _____             __   ___       _   
 /__   \___   ___  / _| / __\ ___ | |_ 
@@ -85,6 +77,9 @@ class ToofBot(commands.Bot):
  \/   \___/ \___/|_| \_____/\___/ \__|
                      Running Toof v2.4"""
         )
+
+    async def on_disconnect(self):
+        self.db.close()
 
 
 if __name__ == "__main__":

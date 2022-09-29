@@ -45,7 +45,11 @@ class QuotesCog(commands.Cog):
             icon_url=msg.author.avatar.url
         )
 
-        await self.bot.config.quotes_channel.send(
+        cursor = self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}')
+        quotes_channel_id: int = cursor.fetchone()[0]
+        quotes_channel = discord.utils.find(lambda c: c.id == quotes_channel_id, interaction.guild.channels)
+
+        await quotes_channel.send(
             content=f"Quote submitted by {interaction.user.mention}:",
             embed=embed,
             view=discord.ui.View().add_item(
@@ -80,8 +84,12 @@ class QuotesCog(commands.Cog):
             name=f"{member}:",
             icon_url=member.avatar.url
         )
+
+        cursor = self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}')
+        quotes_channel_id: int = cursor.fetchone()[0]
+        quotes_channel = discord.utils.find(lambda c: c.id == quotes_channel_id, interaction.guild.channels)
         
-        await self.bot.config.quotes_channel.send(
+        await quotes_channel.send(
             content=f"Quote submitted by {interaction.user.mention}:",
             embed=embed
         )

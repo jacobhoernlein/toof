@@ -4,7 +4,6 @@ Includes a loop that checks to see if it is someone's birthday, a context
 menu for users to see others birthdays, and a command to set birthdays.
 """
 
-import json
 from datetime import datetime
 
 import discord
@@ -17,10 +16,6 @@ class BirthdayCog(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-
-        with open('configs/birthdays.json') as fp:
-            self.birthdays: dict[str, str] = json.load(fp)
-
         self.birthday_context = discord.app_commands.ContextMenu(
             name="Check Birthday",
             callback=self.birthday_context_callback
@@ -38,24 +33,41 @@ class BirthdayCog(commands.Cog):
     async def check_day(self):
         """Sends a birthday message on birthdays"""
         
-        main_channel = self.bot.config.welcome_channel
         now = datetime.now().strftime("%m/%d/%Y")
         
-        with open('configs/birthdays.json') as fp:
-            birthdays:dict = json.load(fp)
+        cursor = self.bot.db.execute('SELECT * FROM birthdays')
+        birthday_list = cursor.fetchall()
 
-        for user_id, birthday in birthdays.items():
+        for birthday_item in birthday_list:
+            user_id: int = birthday_item[0]
+            birthday: str = birthday_item[1]
+
             if now == birthday:
                 user = self.bot.get_user(user_id)
-                await main_channel.send(
-                        f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
-                )
+                
+                for guild in self.bot.guilds:
+                    if user in guild.members:
+
+                        cursor.execute(f'SELECT welcome_channel_id FROM guilds WHERE guild_id = {guild.id}')
+                        channel_id = cursor.fetchone()
+
+                        channel = discord.utils.find(lambda c: c.id == channel_id, guild.channels)
+
+                        await channel.send(
+                            f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
+                        )
 
     async def birthday_context_callback(self, interaction: discord.Interaction, member: discord.Member):
         """Looks through the birthday file for the user and lets the user know if it found anything."""
         
-        for user_id, birthday in self.birthdays.items():
-            if str(member.id) == str(user_id):
+        cursor = self.bot.db.execute('SELECT * FROM birthdays')
+        birthday_list = cursor.fetchall()
+
+        for birthday_item in birthday_list:
+            user_id: int = birthday_item[0]
+            birthday: str = birthday_item[1]
+            
+            if member.id == user_id:
                 await interaction.response.send_message(f"woof! ({birthday})", ephemeral=True)
                 return
 
@@ -66,21 +78,26 @@ class BirthdayCog(commands.Cog):
     async def birthday_update(self, interaction: discord.Interaction, birthday: str):
         """Allows users to add their birthdays to the file."""
         
+        # Ensures the birthday is formatted correctly.
         try:
-            day = datetime.strptime(birthday, "%m/%d/%Y")
+            datetime.strptime(birthday, "%m/%d/%Y")
         # Formatting went wrong
         except ValueError:
             await interaction.response.send_message("woof! you gotta format as mm/dd/yyyy", ephemeral=True)
             return
 
-        # Converts day from datetime object to string, stores in library
-        day = day.strftime("%m/%d/%Y")
-        self.birthdays[str(interaction.user.id)] = day
+        cursor = self.bot.db.execute('SELECT * FROM birthdays')
+        user_ids = [record[0] for record in cursor.fetchall()]
+        user_id = interaction.user.id
 
-        with open("configs/birthdays.json", "w") as fp:
-            json.dump(self.birthdays, fp, indent=4)
+        if user_id in user_ids:
+            cursor.execute(f'UPDATE birthdays SET birthday = \'{birthday}\' WHERE user_id = {user_id}',)
+        else:
+            cursor.execute(f'INSERT INTO birthdays VALUES ({user_id}, \'{birthday}\')')
 
-        await interaction.response.send_message("✅", ephemeral=True)
+        self.bot.db.commit()
+
+        await interaction.response.send_message("updooted !", ephemeral=True)
           
 
 async def setup(bot: toof.ToofBot):

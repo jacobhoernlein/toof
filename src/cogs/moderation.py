@@ -42,7 +42,11 @@ class ModmailModal(discord.ui.Modal):
             icon_url=interaction.user.avatar.url
         )
 
-        await self.bot.config.log_channel.send(
+        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}')
+        log_channel_id: int = cursor.fetchone()[0]
+        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, interaction.guild.channels)
+
+        await log_channel.send(
             content=f"{self.bot.config.mod_role.mention} New Modmail:",
             embed=embed
         )
@@ -77,9 +81,11 @@ class ModCog(commands.Cog):
             text=f"Message ID: {message.id}"
         )
 
-        await self.bot.config.log_channel.send(
-            embed=embed
-        )
+        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {message.guild.id}')
+        log_channel_id: int = cursor.fetchone()[0]
+        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, message.guild.channels)
+
+        await log_channel.send(embed=embed)
 
     # Watches for messages being edited
     @commands.Cog.listener()
@@ -107,7 +113,11 @@ class ModCog(commands.Cog):
             text=f"Message ID: {after.id}"
         )
 
-        await self.bot.config.log_channel.send(
+        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {before.guild.id}')
+        log_channel_id: int = cursor.fetchone()[0]
+        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, before.guild.channels)
+
+        await log_channel.send(
             embed=embed,
             view=discord.ui.View().add_item(
                 discord.ui.Button(
