@@ -4,12 +4,11 @@ moderators to create new roles with descriptions and emojis for the
 users to give to themselves.
 """
 
-import json
 from dataclasses import dataclass
 
-from emoji import is_emoji
 import discord
 from discord.ext import commands
+from emoji import is_emoji
 
 import toof
 
@@ -144,7 +143,7 @@ class RoleAddView(discord.ui.View):
 class RoleCreateModal(discord.ui.Modal):
     """Modal to be sent to moderators that creates a new role."""
 
-    def __init__(self, roles: dict[str, list[ConfigRole]], role_type: str, filename: str, *args, **kwargs):
+    def __init__(self, bot: toof.ToofBot, role_type: str, *args, **kwargs):
         """
         The bot argument is used for finding the config roles to be appended to, 
         as well as the config file.
@@ -152,10 +151,9 @@ class RoleCreateModal(discord.ui.Modal):
         """
         
         super().__init__(*args, **kwargs)
-        self.roles = roles
+        self.bot = bot
         self.role_type = role_type
-        self.filename = filename
-
+        
     name = discord.ui.TextInput(
         label="Role Name", 
         style=discord.TextStyle.short, 
@@ -193,8 +191,6 @@ class RoleCreateModal(discord.ui.Modal):
                 ephemeral=True
             )
             return
-        else:
-            emoji = discord.PartialEmoji.from_str(self.emoji.value)
 
         # Ensures color was formatted properly.
         try:
@@ -213,26 +209,9 @@ class RoleCreateModal(discord.ui.Modal):
             mentionable=(self.role_type == "gaming")
         )
 
-        # Creates a config role object and adds it to the list of the respective type.
-        self.roles[self.role_type].append(ConfigRole(
-            role=role,
-            description=self.description.value, 
-            emoji=emoji
-        ))
-
-        # Creates a dict object based on the role and adds it to the config file.
-        with open(self.filename) as fp:
-            config = json.load(fp)
-        config['roles'][self.role_type].append(
-            {
-                "name": self.name.value,
-                "id": int(role.id),
-                "description": self.description.value,
-                "emoji": self.emoji.value
-            }
-        )
-        with open(self.filename, "w") as fp:
-            json.dump(config, fp, indent=4)
+        # Updates the database with the role's info.
+        self.bot.db.execute(f'INSERT INTO roles VALUES ({interaction.guild_id}, {role.id}, {self.emoji.value}, {self.description.value}, {self.role_type})')
+        self.bot.db.commit()
 
         await interaction.response.send_message(content=f"made {role.mention}!", ephemeral=True)
 
@@ -333,31 +312,32 @@ class RolesCog(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.roles : dict[str, list[ConfigRole]] = {}
         
-    @commands.Cog.listener()
-    async def on_ready(self):
-        with open(self.bot.config.filename) as fp:
-            config = json.load(fp)
-        for role_type in ['pings', 'gaming', 'pronouns']:
-            self.roles[role_type] = [
-                ConfigRole(
-                    role=discord.utils.find(
-                        lambda r: r.id == role_dict['id'], 
-                        self.bot.config.server.roles
-                    ),
-                    description=role_dict['description'],
-                    emoji=discord.PartialEmoji.from_str(role_dict['emoji'])
-                ) for role_dict in config['roles'][role_type]
-            ]
+    def get_guild_role_dict(self, interaction: discord.Interaction) -> dict[str, list[ConfigRole]]:
+        """Queries the database to build a dictionary of config roles for the given interaction's guild."""
+        
+        cursor = self.bot.db.execute(f'SELECT * FROM roles WHERE guild_id = {interaction.guild_id}')
+        guild_role_records = cursor.fetchall()
+
+        guild_roles_dict: dict[str, list[ConfigRole]] = {'pings': [], 'gaming': [], 'pronouns': []}
+        for record in guild_role_records:
+
+            role: discord.Role = discord.utils.find(lambda r: r.id == record[1], interaction.guild.roles)
+            emoji = discord.PartialEmoji.from_str(record[2])
+            description: str = record[3]
+
+            guild_roles_dict[record[4]].append(ConfigRole(role, description, emoji))
+
+        return guild_roles_dict
 
     @discord.app_commands.command(name="roles", description="Give yourself some roles. Take away some roles. Yeah.")
     @discord.app_commands.guild_only()
     async def role_menu(self, interaction: discord.Interaction):
         """Sends the user the role add menu."""
         
+        guild_roles_dict = self.get_guild_role_dict(interaction)
         await interaction.response.send_message(
-            view=RoleAddView(interaction, self.roles, 'pings'),
+            view=RoleAddView(interaction, guild_roles_dict, 'pings'),
             ephemeral=True
         )
 
@@ -374,7 +354,7 @@ class RolesCog(commands.Cog):
     async def create_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
         """Sends the user a modal to create a new role of a given type."""
         
-        await interaction.response.send_modal(RoleCreateModal(self.roles, type.name.lower(), self.bot.config.filename, title=f"Create a new {type.name} role:"))
+        await interaction.response.send_modal(RoleCreateModal(self.bot, type.value.lower(), title=f"Create a new {type.name} role:"))
     
     @discord.app_commands.command(name="deleterole", description="Get rid of a certain role.")
     @discord.app_commands.choices(
@@ -389,8 +369,9 @@ class RolesCog(commands.Cog):
     async def delete_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
         """Sends the user a menu to select a role to delete."""
         
+        guild_roles_dict = self.get_guild_role_dict(interaction)
         await interaction.response.send_message(
-            view=RoleDeleteView(self.roles, type.name.lower()),
+            view=RoleDeleteView(guild_roles_dict, type.name.lower()),
             ephemeral=True
         )
 
@@ -398,22 +379,12 @@ class RolesCog(commands.Cog):
     async def on_guild_role_delete(self, role: discord.Role):
         """Removes the role from the config if it was created through commands."""
 
-        with open(self.bot.config.filename) as fp:
-            config = json.load(fp)
+        cursor = self.bot.db.execute(f'SELECT role_id FROM roles WHERE guild_id = {role.guild.id}')
+        role_ids = [record[0] for record in cursor.fetchall()]
 
-        for role_type in ['pings', 'gaming', 'pronouns']:
-            # Finds the dictionary object that represents the role in the config and deletes it.
-            for i in range(len(config['roles'][role_type])):
-                if config['roles'][role_type][i]['id'] == role.id:
-                    del config['roles'][role_type][i]
-                    with open(self.bot.config.filename, "w") as fp:
-                        json.dump(config, fp, indent=4)
-                    break
-            # Finds the config role in the bot and removes it.
-            for config_role in self.roles[role_type]:
-                if config_role.role == role:
-                    self.roles[role_type].remove(config_role)
-                    return
+        if role.id in role_ids:
+            cursor.execute(f'DELETE FROM roles WHERE role_id = {role.id}')
+            self.bot.db.commit()
 
 
 async def setup(bot: toof.ToofBot):

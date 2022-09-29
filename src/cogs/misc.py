@@ -59,11 +59,20 @@ class MiscCog(commands.Cog):
     @tasks.loop(hours=24)
     async def check_day(self):
         """Sends a good morning happy friday gif at certain time"""
-        
-        main_channel = self.bot.config.welcome_channel
         now = datetime.datetime.now()
+        if now.weekday() != 4:
+            return
 
-        if now.weekday() == 4:
+        cursor = self.bot.db.execute('SELECT * FROM guilds')
+        guild_list = cursor.fetchall()
+
+        for guild_item in guild_list:
+            guild_id = guild_item[0]
+            welcome_channel_id = guild_item[2]
+
+            guild = discord.utils.find(lambda g: g.id == guild_id, self.bot.guilds)
+            main_channel = discord.utils.find(lambda c: c.id == welcome_channel_id, guild.channels)
+
             await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
 
     # Replies to messages that have certain phrases in them    

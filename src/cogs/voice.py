@@ -26,9 +26,10 @@ class VoiceCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        for voice_channel in self.bot.config.server.voice_channels:
-            for member in voice_channel.members:
-                self.voiceusers[member.id] = datetime.now()
+        for guild in self.bot.guilds:
+            for voice_channel in guild.voice_channels:
+                for member in voice_channel.members:
+                    self.voiceusers[member.id] = datetime.now()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
