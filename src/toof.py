@@ -17,7 +17,7 @@ from discord.ext import commands
 
 
 class ToofBot(commands.Bot):
-    """Subclass of commands.Bot that includes neccessary configs and cleanups for toof."""
+    """Subclass of commands.Bot that contains an aiosqlite connection."""
 
     db: aiosqlite.Connection
 
