@@ -45,7 +45,7 @@ class ToofBot(commands.Bot):
   / /\/ _ \ / _ \| |_ /__\/// _ \| __|
  / / | (_) | (_) |  _/ \/  \ (_) | |_ 
  \/   \___/ \___/|_| \_____/\___/ \__|
-                     Running Toof v2.4"""
+                     Running Toof v2.5"""
         )
 
     async def on_disconnect(self):
