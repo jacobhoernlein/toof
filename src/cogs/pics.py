@@ -5,7 +5,6 @@ Then they can see their entire collection using /pics.
 """
 
 from dataclasses import dataclass
-import json
 import random
 
 import discord
@@ -325,33 +324,25 @@ class ToofPicsCog(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-
-        with open('configs/pics.json') as fp:
-            pic_json = json.load(fp)
-
         self.toofpics = ToofPics()
-        for pic_dict in pic_json:
-            toofpic = ToofPic(
-                link=pic_dict['link'],
-                rarity=pic_dict['rarity'],
-                id=pic_dict['id']
-            )
-            self.toofpics.append(toofpic)
 
-        with open('configs/collections.json') as fp:
-            collection_json: dict[str, list[str]] = json.load(fp)
+        cursor = self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = 0')
+        for record in cursor.fetchall():
+            link: str = record[2]
+            id: str = record[1]
 
-        self.collections: dict[str, ToofPics] = {}
-        for user_id, pic_ids in collection_json.items():
-            self.collections[user_id] = ToofPics()
-            for pic_id in pic_ids:
-                self.collections[user_id].append(self.toofpics.find_pic(pic_id))
+            if id[0] == 'C':
+                rarity: str = 'common'
+            elif id[0] == 'R':
+                rarity: str = 'rare'
+            else:
+                rarity: str = 'legendary'
+
+            self.toofpics.append(ToofPic(link, rarity, id))
 
     @discord.app_commands.command(name="pic", description="Get a random Toof pic.")
     async def toof_pic_command(self, interaction: discord.Interaction):
         """Selects a rarity based on chance, opens that a file of that rarity, and sends it."""
-
-        user_id = str(interaction.user.id)
 
         num = random.randint(1, 256)
         if num >= 1 and num <= 3:
@@ -361,32 +352,38 @@ class ToofPicsCog(commands.Cog):
         else:
             pic = self.toofpics.rand_common()
 
-        if user_id not in self.collections.keys():
-            self.collections[user_id] = ToofPics()
+        user_id = interaction.user.id
+        pic_id = pic.id
+        link = pic.link
 
-        if pic not in self.collections[user_id]:
-            self.collections[user_id].append(pic)
+        cursor = self.bot.db.execute(f'SELECT pic_id FROM pics WHERE user_id = {user_id}')
+        if cursor.fetchone() is None:
+            self.bot.db.execute(f'INSERT INTO pics VALUES ({user_id}, \'{pic_id}\', \'{link}\')')
+            self.bot.db.commit()
 
-            with open('configs/collections.json') as fp:
-                collection_json: dict[str, list[str]] = json.load(fp)
-
-            if user_id not in collection_json.keys():
-                collection_json[user_id] = []
-
-            collection_json[user_id].append(pic.id)
-
-            with open('configs/collections.json', 'w') as fp:
-                json.dump(collection_json, fp, indent=4)
-        
         await interaction.response.send_message(embed=pic.embed())
 
     @discord.app_commands.command(name="pics", description="See what Toof pics you've collected.")
     async def toof_pic_collection(self, interaction: discord.Interaction):
         """Allows users to see their collection of pics."""
         
-        try:
-            collection = self.collections[str(interaction.user.id)]
-        except KeyError:
+        user_collection = ToofPics()
+
+        cursor = self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {interaction.user.id}')
+        for record in cursor.fetchall():
+            link: str = record[2]
+            id: str = record[1]
+
+            if id[0] == 'C':
+                rarity: str = 'common'
+            elif id[0] == 'R':
+                rarity: str = 'rare'
+            else:
+                rarity: str = 'legendary'
+
+            user_collection.append(ToofPic(link, rarity, id))
+
+        if len(user_collection) == 0:
             await interaction.response.send_message(
                 content="u dont have any Toof pics! use /pic to find sum.",
                 ephemeral=True
@@ -394,8 +391,8 @@ class ToofPicsCog(commands.Cog):
             return
 
         await interaction.response.send_message(
-            embed=collection.overview(self.toofpics),
-            view=ToofPicCollectionView(self.toofpics, collection, 'overview'),
+            embed=user_collection.overview(self.toofpics),
+            view=ToofPicCollectionView(self.toofpics, user_collection, 'overview'),
             ephemeral=True
         )
 
@@ -422,17 +419,9 @@ class ToofPicsCog(commands.Cog):
         toofpic = ToofPic(link, rarity.value, id)
         self.toofpics.append(toofpic)
 
-        pic_dict = {
-            'link': link,
-            'rarity': rarity.value,
-            'id': id
-        }
-        with open('configs/pics.json') as fp:
-            pic_json = json.load(fp)
-        pic_json.append(pic_dict)
-        with open('configs/pics.json', 'w') as fp:
-            json.dump(pic_json, fp, indent=4)
-    
+        self.bot.db.execute(f'INSERT INTO pics VALUES (0, \'{id}\', \'{link}\')')
+        self.bot.db.commit()
+
         await interaction.response.send_message(content="pic added:", embed=toofpic.embed(), ephemeral=True)
         
     
