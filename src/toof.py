@@ -23,7 +23,7 @@ class ToofBot(commands.Bot):
 
     async def on_ready(self):
         self.db = await aiosqlite.connect('toof.sqlite')
-
+        
         for filename in os.listdir('src/cogs'):
             if filename.endswith('.py'):
                 await self.load_extension(f'cogs.{filename[:-3]}')
@@ -41,7 +41,9 @@ class ToofBot(commands.Bot):
     async def on_disconnect(self):
         await self.db.close()
 
-
+    async def on_resumed(self):
+        self.db = await aiosqlite.connect('toof.sqlite')
+    
 if __name__ == "__main__":
     
     if len(sys.argv) != 2 or sys.argv[1] not in ['--main', '-m', '--dev', '-d']:
