@@ -4,9 +4,8 @@ run with --main or --dev arguments to bring
 bot online.
 """
 
-import asyncio
+import aiosqlite
 import os
-import sqlite3
 import sys
 
 import random
@@ -20,25 +19,16 @@ from discord.ext import commands
 class ToofBot(commands.Bot):
     """Subclass of commands.Bot that includes neccessary configs and cleanups for toof."""
 
-    def __init__(self, *args, **kwargs):
-        """
-        Takes in one required argument, the config file.
-        Other args are the same as commands.Bot.
-        """
-        super().__init__(*args, **kwargs)
-
-        self.db: sqlite3.Connection = sqlite3.connect('toof.sqlite')
-
-        # Loads bot's extensions
-        async def load_extensions():
-            for filename in os.listdir('src/cogs'):
-                if filename.endswith('.py'):
-                    await self.load_extension(f'cogs.{filename[:-3]}')
-        asyncio.run(load_extensions()) 
+    db: aiosqlite.Connection
 
     async def on_ready(self):
+        self.db = await aiosqlite.connect('toof.sqlite')
+
+        for filename in os.listdir('src/cogs'):
+            if filename.endswith('.py'):
+                await self.load_extension(f'cogs.{filename[:-3]}')
+
         await self.tree.sync()
-        
         print("""
  _____             __   ___       _   
 /__   \___   ___  / _| / __\ ___ | |_ 
@@ -49,7 +39,7 @@ class ToofBot(commands.Bot):
         )
 
     async def on_disconnect(self):
-        self.db.close()
+        await self.db.close()
 
 
 if __name__ == "__main__":

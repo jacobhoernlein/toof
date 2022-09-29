@@ -210,8 +210,8 @@ class RoleCreateModal(discord.ui.Modal):
         )
 
         # Updates the database with the role's info.
-        self.bot.db.execute(f'INSERT INTO roles VALUES ({interaction.guild_id}, {role.id}, {self.emoji.value}, {self.description.value}, {self.role_type})')
-        self.bot.db.commit()
+        await self.bot.db.execute(f'INSERT INTO roles VALUES ({interaction.guild_id}, {role.id}, {self.emoji.value}, {self.description.value}, {self.role_type})')
+        await self.bot.db.commit()
 
         await interaction.response.send_message(content=f"made {role.mention}!", ephemeral=True)
 
@@ -313,11 +313,11 @@ class RolesCog(commands.Cog):
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         
-    def get_guild_role_dict(self, interaction: discord.Interaction) -> dict[str, list[ConfigRole]]:
+    async def get_guild_role_dict(self, interaction: discord.Interaction) -> dict[str, list[ConfigRole]]:
         """Queries the database to build a dictionary of config roles for the given interaction's guild."""
         
-        cursor = self.bot.db.execute(f'SELECT * FROM roles WHERE guild_id = {interaction.guild_id}')
-        guild_role_records = cursor.fetchall()
+        async with self.bot.db.execute(f'SELECT * FROM roles WHERE guild_id = {interaction.guild_id}') as cursor:
+            guild_role_records = await cursor.fetchall()
 
         guild_roles_dict: dict[str, list[ConfigRole]] = {'pings': [], 'gaming': [], 'pronouns': []}
         for record in guild_role_records:
@@ -335,7 +335,7 @@ class RolesCog(commands.Cog):
     async def role_menu(self, interaction: discord.Interaction):
         """Sends the user the role add menu."""
         
-        guild_roles_dict = self.get_guild_role_dict(interaction)
+        guild_roles_dict = await self.get_guild_role_dict(interaction)
         await interaction.response.send_message(
             view=RoleAddView(interaction, guild_roles_dict, 'pings'),
             ephemeral=True
@@ -369,7 +369,7 @@ class RolesCog(commands.Cog):
     async def delete_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
         """Sends the user a menu to select a role to delete."""
         
-        guild_roles_dict = self.get_guild_role_dict(interaction)
+        guild_roles_dict = await self.get_guild_role_dict(interaction)
         await interaction.response.send_message(
             view=RoleDeleteView(guild_roles_dict, type.name.lower()),
             ephemeral=True
@@ -379,12 +379,12 @@ class RolesCog(commands.Cog):
     async def on_guild_role_delete(self, role: discord.Role):
         """Removes the role from the config if it was created through commands."""
 
-        cursor = self.bot.db.execute(f'SELECT role_id FROM roles WHERE guild_id = {role.guild.id}')
-        role_ids = [record[0] for record in cursor.fetchall()]
+        async with self.bot.db.execute(f'SELECT role_id FROM roles WHERE guild_id = {role.guild.id}') as cursor:
+            role_ids = [record[0] for record in await cursor.fetchall()]
 
         if role.id in role_ids:
-            cursor.execute(f'DELETE FROM roles WHERE role_id = {role.id}')
-            self.bot.db.commit()
+            await self.bot.db.execute(f'DELETE FROM roles WHERE role_id = {role.id}')
+            await self.bot.db.commit()
 
 
 async def setup(bot: toof.ToofBot):

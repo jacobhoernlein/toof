@@ -42,7 +42,9 @@ class ModmailModal(discord.ui.Modal):
             icon_url=interaction.user.avatar.url
         )
 
-        record = self.bot.db.execute(f'SELECT log_channel_id, mod_role_id FROM guilds WHERE guild_id = {interaction.guild_id}').fetchone()
+        async with self.bot.db.execute(f'SELECT log_channel_id, mod_role_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
+            record = await cursor.fetchone()
+
         log_channel = discord.utils.find(lambda c: c.id == record[0], interaction.guild.channels)
         mod_role = discord.utils.find(lambda r: r.id == record[1], interaction.guild.roles)
 
@@ -63,8 +65,9 @@ class ModCog(commands.Cog):
     async def on_message_delete(self, message: discord.Message):
         """Snipes deleted messages and puts them into the erver's mod log."""
         
-        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {message.guild.id}')
-        log_channel_id: int = cursor.fetchone()[0]
+        async with self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {message.guild.id}') as cursor:
+            log_channel_id: int = (await cursor.fetchone())[0]
+
         log_channel = discord.utils.find(lambda c: c.id == log_channel_id, message.guild.channels)
         
         if message.author.bot or message.channel == log_channel:
@@ -113,8 +116,9 @@ class ModCog(commands.Cog):
             text=f"Message ID: {after.id}"
         )
 
-        cursor = self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {before.guild.id}')
-        log_channel_id: int = cursor.fetchone()[0]
+        async with self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {before.guild.id}') as cursor:
+            log_channel_id: int = (await cursor.fetchone())[0]
+            
         log_channel = discord.utils.find(lambda c: c.id == log_channel_id, before.guild.channels)
 
         await log_channel.send(

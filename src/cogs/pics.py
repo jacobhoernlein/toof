@@ -88,13 +88,6 @@ class ToofPics(list[ToofPic]):
             return random.choice(list)
         return None
 
-    def find_pic(self, id: str) -> ToofPic:
-        """Finds and returns a pic with the given ID if it is in the list."""
-        for pic in self:
-            if pic.id == id:
-                return pic
-        return None
-
     def overview(self, series: "ToofPics") -> discord.Embed:
         """
         Return a Discord embed summarizing the collection.
@@ -326,19 +319,20 @@ class ToofPicsCog(commands.Cog):
         self.bot = bot
         self.toofpics = ToofPics()
 
-        cursor = self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = 0')
-        for record in cursor.fetchall():
-            link: str = record[2]
-            id: str = record[1]
+    async def cog_load(self):
+        async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = 0') as cursor:
+            async for record in cursor:
+                link: str = record[2]
+                id: str = record[1]
 
-            if id[0] == 'C':
-                rarity: str = 'common'
-            elif id[0] == 'R':
-                rarity: str = 'rare'
-            else:
-                rarity: str = 'legendary'
+                if id[0] == 'C':
+                    rarity: str = 'common'
+                elif id[0] == 'R':
+                    rarity: str = 'rare'
+                else:
+                    rarity: str = 'legendary'
 
-            self.toofpics.append(ToofPic(link, rarity, id))
+                self.toofpics.append(ToofPic(link, rarity, id))
 
     @discord.app_commands.command(name="pic", description="Get a random Toof pic.")
     async def toof_pic_command(self, interaction: discord.Interaction):
@@ -356,10 +350,10 @@ class ToofPicsCog(commands.Cog):
         pic_id = pic.id
         link = pic.link
 
-        cursor = self.bot.db.execute(f'SELECT pic_id FROM pics WHERE user_id = {user_id}')
-        if cursor.fetchone() is None:
-            self.bot.db.execute(f'INSERT INTO pics VALUES ({user_id}, \'{pic_id}\', \'{link}\')')
-            self.bot.db.commit()
+        async with self.bot.db.execute(f'SELECT pic_id FROM pics WHERE user_id = {user_id}') as cursor:
+            if await cursor.fetchone() is None:
+                await cursor.execute(f'INSERT INTO pics VALUES ({user_id}, \'{pic_id}\', \'{link}\')')
+                await self.bot.db.commit()
 
         await interaction.response.send_message(embed=pic.embed())
 
@@ -369,19 +363,19 @@ class ToofPicsCog(commands.Cog):
         
         user_collection = ToofPics()
 
-        cursor = self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {interaction.user.id}')
-        for record in cursor.fetchall():
-            link: str = record[2]
-            id: str = record[1]
+        async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {interaction.user.id}') as cursor:
+            async for record in cursor:
+                link: str = record[2]
+                id: str = record[1]
 
-            if id[0] == 'C':
-                rarity: str = 'common'
-            elif id[0] == 'R':
-                rarity: str = 'rare'
-            else:
-                rarity: str = 'legendary'
+                if id[0] == 'C':
+                    rarity: str = 'common'
+                elif id[0] == 'R':
+                    rarity: str = 'rare'
+                else:
+                    rarity: str = 'legendary'
 
-            user_collection.append(ToofPic(link, rarity, id))
+                user_collection.append(ToofPic(link, rarity, id))
 
         if len(user_collection) == 0:
             await interaction.response.send_message(
@@ -419,8 +413,8 @@ class ToofPicsCog(commands.Cog):
         toofpic = ToofPic(link, rarity.value, id)
         self.toofpics.append(toofpic)
 
-        self.bot.db.execute(f'INSERT INTO pics VALUES (0, \'{id}\', \'{link}\')')
-        self.bot.db.commit()
+        await self.bot.db.execute(f'INSERT INTO pics VALUES (0, \'{id}\', \'{link}\')')
+        await self.bot.db.commit()
 
         await interaction.response.send_message(content="pic added:", embed=toofpic.embed(), ephemeral=True)
         

@@ -45,8 +45,9 @@ class QuotesCog(commands.Cog):
             icon_url=msg.author.avatar.url
         )
 
-        cursor = self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}')
-        quotes_channel_id: int = cursor.fetchone()[0]
+        async with self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
+            quotes_channel_id: int = (await cursor.fetchone())[0]
+
         quotes_channel = discord.utils.find(lambda c: c.id == quotes_channel_id, interaction.guild.channels)
 
         await quotes_channel.send(
@@ -85,8 +86,9 @@ class QuotesCog(commands.Cog):
             icon_url=member.avatar.url
         )
 
-        cursor = self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}')
-        quotes_channel_id: int = cursor.fetchone()[0]
+        async with self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
+            quotes_channel_id: int = (await cursor.fetchone())[0]
+            
         quotes_channel = discord.utils.find(lambda c: c.id == quotes_channel_id, interaction.guild.channels)
         
         await quotes_channel.send(

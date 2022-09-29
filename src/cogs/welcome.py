@@ -20,8 +20,9 @@ class WelcomeCog(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         
-        cursor = self.bot.db.execute(f'SELECT welcome_channel_id, mod_role_id FROM guilds WHERE guild_id = {member.guild.id}')
-        channel_mod_tuple = cursor.fetchone()
+        async with self.bot.db.execute(f'SELECT welcome_channel_id, mod_role_id FROM guilds WHERE guild_id = {member.guild.id}') as cursor:
+            channel_mod_tuple = await cursor.fetchone()
+
         welcome_channel_id: int = channel_mod_tuple[0]
         mod_role_id: int = channel_mod_tuple[1]
         welcome_channel = discord.utils.find(lambda c: c.id == welcome_channel_id, member.guild.channels)
@@ -46,8 +47,9 @@ class WelcomeCog(commands.Cog):
         thread: discord.Thread = interaction.channel
         member = self.threads[thread]
 
-        cursor = self.bot.db.execute(f'SELECT member_role_id FROM guilds WHERE guild_id = {interaction.guild_id}')
-        member_role_id: int = cursor.fetchone()[0]
+        async with self.bot.db.execute(f'SELECT member_role_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
+            member_role_id: int = (await cursor.fetchone())[0]
+            
         member_role = discord.utils.find(lambda c: c.id == member_role_id, interaction.guild.roles)
 
         await interaction.response.send_message(f"{member.mention} haz been accepted 😎")

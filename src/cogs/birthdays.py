@@ -22,8 +22,7 @@ class BirthdayCog(commands.Cog):
         )
         self.bot.tree.add_command(self.birthday_context)
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def cog_load(self):
         self.check_day.start()
 
     def cog_unload(self):
@@ -35,33 +34,33 @@ class BirthdayCog(commands.Cog):
         
         now = datetime.now().strftime("%m/%d/%Y")
         
-        cursor = self.bot.db.execute('SELECT * FROM birthdays')
-        birthday_list = cursor.fetchall()
+        async with self.bot.db.execute('SELECT * FROM birthdays') as cursor:
+            birthday_list = await cursor.fetchall()
 
-        for birthday_item in birthday_list:
-            user_id: int = birthday_item[0]
-            birthday: str = birthday_item[1]
+            for birthday_item in birthday_list:
+                user_id: int = birthday_item[0]
+                birthday: str = birthday_item[1]
 
-            if now == birthday:
-                user = self.bot.get_user(user_id)
-                
-                for guild in self.bot.guilds:
-                    if user in guild.members:
+                if now == birthday:
+                    user = self.bot.get_user(user_id)
+                    
+                    for guild in self.bot.guilds:
+                        if user in guild.members:
 
-                        cursor.execute(f'SELECT welcome_channel_id FROM guilds WHERE guild_id = {guild.id}')
-                        channel_id = cursor.fetchone()
+                            await cursor.execute(f'SELECT welcome_channel_id FROM guilds WHERE guild_id = {guild.id}')
+                            channel_id = await cursor.fetchone()
 
-                        channel = discord.utils.find(lambda c: c.id == channel_id, guild.channels)
+                            channel = discord.utils.find(lambda c: c.id == channel_id, guild.channels)
 
-                        await channel.send(
-                            f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
-                        )
+                            await channel.send(
+                                f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
+                            )
 
     async def birthday_context_callback(self, interaction: discord.Interaction, member: discord.Member):
         """Looks through the birthday file for the user and lets the user know if it found anything."""
         
-        cursor = self.bot.db.execute('SELECT * FROM birthdays')
-        birthday_list = cursor.fetchall()
+        async with self.bot.db.execute('SELECT * FROM birthdays') as cursor:
+            birthday_list = await cursor.fetchall()
 
         for birthday_item in birthday_list:
             user_id: int = birthday_item[0]
@@ -86,16 +85,17 @@ class BirthdayCog(commands.Cog):
             await interaction.response.send_message("woof! you gotta format as mm/dd/yyyy", ephemeral=True)
             return
 
-        cursor = self.bot.db.execute('SELECT * FROM birthdays')
-        user_ids = [record[0] for record in cursor.fetchall()]
+        async with self.bot.db.execute('SELECT * FROM birthdays') as cursor:
+            user_ids = [record[0] for record in await cursor.fetchall()]
+            
         user_id = interaction.user.id
 
         if user_id in user_ids:
-            cursor.execute(f'UPDATE birthdays SET birthday = \'{birthday}\' WHERE user_id = {user_id}',)
+            await self.bot.db.execute(f'UPDATE birthdays SET birthday = \'{birthday}\' WHERE user_id = {user_id}',)
         else:
-            cursor.execute(f'INSERT INTO birthdays VALUES ({user_id}, \'{birthday}\')')
+            await self.bot.db.execute(f'INSERT INTO birthdays VALUES ({user_id}, \'{birthday}\')')
 
-        self.bot.db.commit()
+        await self.bot.db.commit()
 
         await interaction.response.send_message("updooted !", ephemeral=True)
           

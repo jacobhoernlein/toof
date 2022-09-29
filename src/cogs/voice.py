@@ -24,8 +24,7 @@ class VoiceCog(commands.Cog):
         )
         self.bot.tree.add_command(self.check_voice_time_context)
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def cog_load(self):
         for guild in self.bot.guilds:
             for voice_channel in guild.voice_channels:
                 for member in voice_channel.members:
