@@ -48,11 +48,14 @@ class ModmailModal(discord.ui.Modal):
         log_channel = discord.utils.find(lambda c: c.id == record[0], interaction.guild.channels)
         mod_role = discord.utils.find(lambda r: r.id == record[1], interaction.guild.roles)
 
-        await log_channel.send(
-            content=f"{mod_role.mention} New Modmail:",
-            embed=embed
-        )
-        await interaction.response.send_message(content="Modmail sent.", ephemeral=True)
+        if log_channel is None or mod_role is None:
+            await interaction.response.send_message(content="modmail culdnt b send :(", ephemeral=True)
+        else:
+            await log_channel.send(
+                content=f"{mod_role.mention} New Modmail:",
+                embed=embed
+            )
+            await interaction.response.send_message(content="modmail sent.:)", ephemeral=True)
 
 
 class ModCog(commands.Cog):
@@ -75,7 +78,7 @@ class ModCog(commands.Cog):
         
         log_channel = await self.get_log_channel(message.guild)
         
-        if message.author.bot or message.channel == log_channel:
+        if message.author.bot or message.channel == log_channel or log_channel is None:
             return
         
         embed = discord.Embed(
@@ -99,7 +102,9 @@ class ModCog(commands.Cog):
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         """Watches for messages being edited and puts a summary in the log channel."""
     
-        if before.author.bot or before.content == after.content:
+        log_channel = await self.get_log_channel(before.guild)
+
+        if before.author.bot or before.content == after.content or log_channel is None:
             return
 
         embed = discord.Embed(
@@ -122,7 +127,6 @@ class ModCog(commands.Cog):
             text=f"Message ID: {after.id}"
         )
   
-        log_channel = await self.get_log_channel(before.guild)
         await log_channel.send(
             embed=embed,
             view=discord.ui.View().add_item(

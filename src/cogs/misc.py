@@ -64,7 +64,9 @@ class MiscCog(commands.Cog):
 
         async with self.bot.db.execute('SELECT welcome_channel_id FROM guilds') as cursor:
             async for record in cursor:
-                main_channel = await self.bot.fetch_channel(record[0])
+                main_channel = self.bot.get_channel(record[0])
+                if main_channel is None:
+                    continue
                 await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
 
     # Replies to messages that have certain phrases in them    

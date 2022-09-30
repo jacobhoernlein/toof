@@ -9,7 +9,7 @@ from random import randint
 
 import discord
 from discord.ext import commands
-import tweepy
+from tweepy import Client as TPClient
 
 import toof
 
@@ -19,7 +19,7 @@ class TwitterCog(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.tpclient = tweepy.Client(
+        self.tpclient = TPClient(
             consumer_key=os.getenv('TWEEPYAPITOKEN'),
             consumer_secret=os.getenv('TWEEPYAPISECRET'),
             access_token=os.getenv('TWEEPYACCESS'),

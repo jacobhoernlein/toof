@@ -55,19 +55,23 @@ class QuotesCog(commands.Cog):
         )
 
         quotes_channel = await self.get_quotes_channel(interaction.guild)
-        await quotes_channel.send(
-            content=f"Quote submitted by {interaction.user.mention}:",
-            embed=embed,
-            view=discord.ui.View().add_item(
-                discord.ui.Button(
-                    style=discord.ButtonStyle.link,
-                    label="Jump To Message",
-                    url=msg.jump_url,
-                    emoji="⤴️"
+
+        if quotes_channel is None:
+            await interaction.response.send_message("ruh roh. culdnt send quorte...", ephemeral=True)
+        else:
+            await quotes_channel.send(
+                content=f"Quote submitted by {interaction.user.mention}:",
+                embed=embed,
+                view=discord.ui.View().add_item(
+                    discord.ui.Button(
+                        style=discord.ButtonStyle.link,
+                        label="Jump To Message",
+                        url=msg.jump_url,
+                        emoji="⤴️"
+                    )
                 )
             )
-        )
-        await interaction.response.send_message("quote sent 😎", ephemeral=True)
+            await interaction.response.send_message("quote sent 😎", ephemeral=True)
 
     @discord.app_commands.command(
         name="quote",
@@ -92,11 +96,15 @@ class QuotesCog(commands.Cog):
         )
   
         quotes_channel = await self.get_quotes_channel(interaction.guild)
-        await quotes_channel.send(
-            content=f"Quote submitted by {interaction.user.mention}:",
-            embed=embed
-        )
-        await interaction.response.send_message("quote sent 😎", ephemeral=True)
+
+        if quotes_channel is None:
+            await interaction.response.send_message("ruh roh. culdnt send quorte...", ephemeral=True)
+        else:
+            await quotes_channel.send(
+                content=f"Quote submitted by {interaction.user.mention}:",
+                embed=embed
+            )
+            await interaction.response.send_message("quote sent 😎", ephemeral=True)
 
 
 async def setup(bot: toof.ToofBot):
