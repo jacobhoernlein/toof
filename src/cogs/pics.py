@@ -381,13 +381,12 @@ class ToofPicsCog(commands.Cog):
                 content="u dont have any Toof pics! use /pic to find sum.",
                 ephemeral=True
             )
-            return
-
-        await interaction.response.send_message(
-            embed=user_collection.overview(self.toofpics),
-            view=ToofPicCollectionView(self.toofpics, user_collection, 'overview'),
-            ephemeral=True
-        )
+        else:
+            await interaction.response.send_message(
+                embed=user_collection.overview(self.toofpics),
+                view=ToofPicCollectionView(self.toofpics, user_collection, 'overview'),
+                ephemeral=True
+            )
 
     @discord.app_commands.command(name="newpic", description="Add a new Toof pic with a given image link.")
     @discord.app_commands.describe(rarity="The rarity of the new ToofPic.", link="A link to the picture.")

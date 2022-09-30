@@ -313,20 +313,18 @@ class RolesCog(commands.Cog):
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         
-    async def get_guild_role_dict(self, interaction: discord.Interaction) -> dict[str, list[ConfigRole]]:
+    async def get_guild_role_dict(self, guild: discord.Guild) -> dict[str, list[ConfigRole]]:
         """Queries the database to build a dictionary of config roles for the given interaction's guild."""
         
-        async with self.bot.db.execute(f'SELECT * FROM roles WHERE guild_id = {interaction.guild_id}') as cursor:
-            guild_role_records = await cursor.fetchall()
-
         guild_roles_dict: dict[str, list[ConfigRole]] = {'pings': [], 'gaming': [], 'pronouns': []}
-        for record in guild_role_records:
+        async with self.bot.db.execute(f'SELECT * FROM roles WHERE guild_id = {guild.id}') as cursor:
+            async for record in cursor:
 
-            role: discord.Role = discord.utils.find(lambda r: r.id == record[1], interaction.guild.roles)
-            emoji = discord.PartialEmoji.from_str(record[2])
-            description: str = record[3]
+                role: discord.Role = discord.utils.find(lambda r: r.id == record[1], guild.roles)
+                emoji = discord.PartialEmoji.from_str(record[2])
+                description: str = record[3]
 
-            guild_roles_dict[record[4]].append(ConfigRole(role, description, emoji))
+                guild_roles_dict[record[4]].append(ConfigRole(role, description, emoji))
 
         return guild_roles_dict
 

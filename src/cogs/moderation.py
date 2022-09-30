@@ -44,6 +44,8 @@ class ModmailModal(discord.ui.Modal):
 
         async with self.bot.db.execute(f'SELECT log_channel_id, mod_role_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
             record = await cursor.fetchone()
+        if record is None:
+            return
 
         log_channel = discord.utils.find(lambda c: c.id == record[0], interaction.guild.channels)
         mod_role = discord.utils.find(lambda r: r.id == record[1], interaction.guild.roles)
@@ -75,9 +77,11 @@ class ModCog(commands.Cog):
     async def on_message_delete(self, message: discord.Message):
         """Snipes deleted messages and puts them into the erver's mod log."""
         
+        if message.author.bot:
+            return
+
         log_channel = await self.get_log_channel(message.guild)
-        
-        if message.author.bot or message.channel == log_channel or log_channel is None:
+        if log_channel is None or message.channel == log_channel:
             return
         
         embed = discord.Embed(
