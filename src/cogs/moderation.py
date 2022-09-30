@@ -101,9 +101,11 @@ class ModCog(commands.Cog):
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         """Watches for messages being edited and puts a summary in the log channel."""
     
-        log_channel = await self.get_log_channel(before.guild)
+        if before.author.bot or before.content == after.content:
+            return
 
-        if before.author.bot or before.content == after.content or log_channel is None:
+        log_channel = await self.get_log_channel(before.guild)
+        if log_channel is None:
             return
 
         embed = discord.Embed(

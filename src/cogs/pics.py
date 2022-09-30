@@ -321,9 +321,9 @@ class ToofPicsCog(commands.Cog):
         self.bot = bot
     
     async def cog_load(self):
-        self.toofpics = await self.get_user_collection(0)
+        self.toofpics = await self.get_collection(0)
 
-    async def get_user_collection(self, user_id: int) -> ToofPics:
+    async def get_collection(self, user_id: int) -> ToofPics:
         """Get a list of ToofPics that belong to the given user_id. 0 for all ToofPics."""
         
         collection = ToofPics()
@@ -347,6 +347,7 @@ class ToofPicsCog(commands.Cog):
     async def toof_pic_command(self, interaction: discord.Interaction):
         """Selects a rarity based on chance, opens that a file of that rarity, and sends it."""
 
+        # Selects a random toofpic weighted by rarity.
         num = random.randint(1, 256)
         if num >= 1 and num <= 3:
             pic = self.toofpics.rand_legendary()
@@ -355,22 +356,25 @@ class ToofPicsCog(commands.Cog):
         else:
             pic = self.toofpics.rand_common()
 
+        await interaction.response.send_message(embed=pic.embed())
+
         user_id = interaction.user.id
         pic_id = pic.id
         link = pic.link
 
-        async with self.bot.db.execute(f'SELECT pic_id FROM pics WHERE user_id = {user_id}') as cursor:
-            if await cursor.fetchone() is None:
-                await cursor.execute(f'INSERT INTO pics VALUES ({user_id}, \'{pic_id}\', \'{link}\')')
-                await self.bot.db.commit()
+        # Searches for if the pic already has been found by the user, creates record if not.
+        async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {user_id} AND pic_id = \'{pic_id}\'') as cursor:
+            record = await cursor.fetchone()
 
-        await interaction.response.send_message(embed=pic.embed())
+        if record is None:
+            await self.bot.db.execute(f'INSERT INTO pics VALUES ({user_id}, \'{pic_id}\', \'{link}\')')
+            await self.bot.db.commit()
 
     @discord.app_commands.command(name="pics", description="See what Toof pics you've collected.")
     async def toof_pic_collection(self, interaction: discord.Interaction):
         """Allows users to see their collection of pics."""
         
-        user_collection = await self.get_user_collection(interaction.user.id)
+        user_collection = await self.get_collection(interaction.user.id)
 
         if len(user_collection) == 0:
             await interaction.response.send_message(

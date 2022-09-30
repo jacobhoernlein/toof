@@ -22,8 +22,13 @@ class WelcomeCog(commands.Cog):
         
         async with self.bot.db.execute(f'SELECT welcome_channel_id, mod_role_id FROM guilds WHERE guild_id = {member.guild.id}') as cursor:
             record = await cursor.fetchone()
-        welcome_channel = self.bot.get_channel(record[0])
-        mod_role = discord.utils.find(lambda r: r.id == record[1], member.guild.roles)
+        
+        if record is None:
+            welcome_channel = None
+            mod_role = None
+        else:
+            welcome_channel = self.bot.get_channel(record[0])
+            mod_role = discord.utils.find(lambda r: r.id == record[1], member.guild.roles)
 
         if welcome_channel is None or mod_role is None:
             return
@@ -47,8 +52,12 @@ class WelcomeCog(commands.Cog):
     async def accept_user(self, interaction: discord.Interaction):
 
         async with self.bot.db.execute(f'SELECT member_role_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
-            member_role_id: int = (await cursor.fetchone())[0]
-        member_role = discord.utils.find(lambda c: c.id == member_role_id, interaction.guild.roles)
+            record = await cursor.fetchone()
+            
+        if record is None:
+            member_role = None
+        else:
+            member_role = discord.utils.find(lambda c: c.id == record[0], interaction.guild.roles)
 
         if interaction.channel not in self.threads.keys() or member_role is None:
             await interaction.response.send_message(
