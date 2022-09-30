@@ -3,7 +3,7 @@ Extension that includes voice functionality. Used to be a music bot,
 now just tracks how long users were in a channel for.
 """
 
-from datetime import datetime, timedelta
+import datetime
 
 import discord
 from discord.ext import commands
@@ -16,13 +16,14 @@ class VoiceCog(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.voiceusers: dict[int, datetime] = {}
+        self.voiceusers: dict[int, datetime.datetime] = {}
 
-        self.check_voice_time_context = discord.app_commands.ContextMenu(
-            name="Check Voice Time",
-            callback=self.check_voice_time_callback
+        self.bot.tree.add_command(
+            discord.app_commands.ContextMenu(
+                name="Check Voice Time",
+                callback=self.check_voice_time_context_callback
+            )
         )
-        self.bot.tree.add_command(self.check_voice_time_context)
 
     async def cog_load(self):
         for guild in self.bot.guilds:
@@ -40,14 +41,14 @@ class VoiceCog(commands.Cog):
             del self.voiceusers[member.id]
 
     @discord.app_commands.guild_only()
-    async def check_voice_time_callback(self, interaction: discord.Interaction, member: discord.Member):
+    async def check_voice_time_context_callback(self, interaction: discord.Interaction, member: discord.Member):
         """Checks how long you've been in a voice channel"""
         
         if member.id not in self.voiceusers.keys():
             await interaction.response.send_message(content=f"{member.mention} isnt in a voice !", ephemeral=True)
             return
 
-        delta: timedelta = datetime.now() - self.voiceusers[member.id]
+        delta: datetime.timedelta = datetime.now() - self.voiceusers[member.id]
         
         seconds = delta.seconds
         days = delta.days

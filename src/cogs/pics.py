@@ -315,12 +315,19 @@ class ToofPicCollectionView(discord.ui.View):
 class ToofPicsCog(commands.Cog):
     """Cog which contains commands to interact with the Toof Pics extension."""
 
+    toofpics: ToofPics
+
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.toofpics = ToofPics()
-
+    
     async def cog_load(self):
-        async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = 0') as cursor:
+        self.toofpics = await self.get_user_collection(0)
+
+    async def get_user_collection(self, user_id: int) -> ToofPics:
+        """Get a list of ToofPics that belong to the given user_id. 0 for all ToofPics."""
+        
+        collection = ToofPics()
+        async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {user_id}') as cursor:
             async for record in cursor:
                 link: str = record[2]
                 id: str = record[1]
@@ -332,7 +339,9 @@ class ToofPicsCog(commands.Cog):
                 else:
                     rarity: str = 'legendary'
 
-                self.toofpics.append(ToofPic(link, rarity, id))
+                collection.append(ToofPic(link, rarity, id))
+        
+        return collection
 
     @discord.app_commands.command(name="pic", description="Get a random Toof pic.")
     async def toof_pic_command(self, interaction: discord.Interaction):
@@ -361,21 +370,7 @@ class ToofPicsCog(commands.Cog):
     async def toof_pic_collection(self, interaction: discord.Interaction):
         """Allows users to see their collection of pics."""
         
-        user_collection = ToofPics()
-
-        async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {interaction.user.id}') as cursor:
-            async for record in cursor:
-                link: str = record[2]
-                id: str = record[1]
-
-                if id[0] == 'C':
-                    rarity: str = 'common'
-                elif id[0] == 'R':
-                    rarity: str = 'rare'
-                else:
-                    rarity: str = 'legendary'
-
-                user_collection.append(ToofPic(link, rarity, id))
+        user_collection = await self.get_user_collection(interaction.user.id)
 
         if len(user_collection) == 0:
             await interaction.response.send_message(

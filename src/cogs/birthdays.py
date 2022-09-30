@@ -16,11 +16,13 @@ class BirthdayCog(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.birthday_context = discord.app_commands.ContextMenu(
-            name="Check Birthday",
-            callback=self.birthday_context_callback
+        
+        self.bot.tree.add_command(
+            discord.app_commands.ContextMenu(
+                name="Check Birthday",
+                callback=self.birthday_context_callback
+            )
         )
-        self.bot.tree.add_command(self.birthday_context)
 
     async def cog_load(self):
         self.check_day.start()
@@ -33,45 +35,43 @@ class BirthdayCog(commands.Cog):
         """Sends a birthday message on birthdays"""
         
         now = datetime.now().strftime("%m/%d/%Y")
-        
+
+        # Creates a list of users whose birthdays are on today
+        birthday_boys: list[discord.User] = []
         async with self.bot.db.execute('SELECT * FROM birthdays') as cursor:
-            birthday_list = await cursor.fetchall()
-
-            for birthday_item in birthday_list:
-                user_id: int = birthday_item[0]
-                birthday: str = birthday_item[1]
-
+            async for record in cursor:
+                user = self.bot.get_user(record[0])
+                if user is None:
+                    continue
+                
+                birthday: str = record[1]
                 if now == birthday:
-                    user = self.bot.get_user(user_id)
-                    
-                    for guild in self.bot.guilds:
-                        if user in guild.members:
+                    birthday_boys.append(user)
 
-                            await cursor.execute(f'SELECT welcome_channel_id FROM guilds WHERE guild_id = {guild.id}')
-                            channel_id = await cursor.fetchone()
+        # Loops over every welcome channel and sends a message to every birthday boy in the server
+        async with self.bot.db.execute('SELECT welcome_channel_id FROM guilds') as cursor:
+            async for record in cursor:
+                welcome_channel = self.bot.get_channel(record[0])
+                if welcome_channel is None:
+                    continue
 
-                            channel = discord.utils.find(lambda c: c.id == channel_id, guild.channels)
-
-                            await channel.send(
-                                f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
-                            )
+                for user in birthday_boys:
+                    if user in welcome_channel.guild.members:
+                        await welcome_channel.send(
+                            f"{user.mention} https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
+                        )
 
     async def birthday_context_callback(self, interaction: discord.Interaction, member: discord.Member):
         """Looks through the birthday file for the user and lets the user know if it found anything."""
         
-        async with self.bot.db.execute('SELECT * FROM birthdays') as cursor:
-            birthday_list = await cursor.fetchall()
+        async with self.bot.db.execute(f'SELECT birthday FROM birthdays WHERE user_id = {member.id}') as cursor:
+            record = await cursor.fetchone()
 
-        for birthday_item in birthday_list:
-            user_id: int = birthday_item[0]
-            birthday: str = birthday_item[1]
-            
-            if member.id == user_id:
-                await interaction.response.send_message(f"woof! ({birthday})", ephemeral=True)
-                return
+        if record:
+            await interaction.response.send_message(f"woof! ({record[0]})", ephemeral=True)
+        else:
+            await interaction.response.send_message("idk ther bday!", ephemeral=True)
 
-        await interaction.response.send_message("idk ther bday!", ephemeral=True)
-        
     @discord.app_commands.command(name="birthday", description="Tell Toof your birthday.")
     @discord.app_commands.describe(birthday="Format as mm/dd/yyyy.")
     async def birthday_update(self, interaction: discord.Interaction, birthday: str):
@@ -85,15 +85,17 @@ class BirthdayCog(commands.Cog):
             await interaction.response.send_message("woof! you gotta format as mm/dd/yyyy", ephemeral=True)
             return
 
-        async with self.bot.db.execute('SELECT * FROM birthdays') as cursor:
-            user_ids = [record[0] for record in await cursor.fetchall()]
+        async with self.bot.db.execute('SELECT user_id FROM birthdays') as cursor:
+            user_ids = [record[0] async for record in cursor]
             
-        user_id = interaction.user.id
-
-        if user_id in user_ids:
-            await self.bot.db.execute(f'UPDATE birthdays SET birthday = \'{birthday}\' WHERE user_id = {user_id}',)
+        if interaction.user.id in user_ids:
+            await self.bot.db.execute(
+                f'UPDATE birthdays SET birthday = \'{birthday}\' WHERE user_id = {interaction.user.id}'
+            )
         else:
-            await self.bot.db.execute(f'INSERT INTO birthdays VALUES ({user_id}, \'{birthday}\')')
+            await self.bot.db.execute(
+                f'INSERT INTO birthdays VALUES ({interaction.user.id}, \'{birthday}\')'
+            )
 
         await self.bot.db.commit()
 

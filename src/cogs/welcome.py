@@ -21,19 +21,25 @@ class WelcomeCog(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         
         async with self.bot.db.execute(f'SELECT welcome_channel_id, mod_role_id FROM guilds WHERE guild_id = {member.guild.id}') as cursor:
-            channel_mod_tuple = await cursor.fetchone()
+            record = await cursor.fetchone()
 
-        welcome_channel_id: int = channel_mod_tuple[0]
-        mod_role_id: int = channel_mod_tuple[1]
+        welcome_channel_id: int = record[0]
+        mod_role_id: int = record[1]
         welcome_channel = discord.utils.find(lambda c: c.id == welcome_channel_id, member.guild.channels)
         mod_role = discord.utils.find(lambda r: r.id == mod_role_id, member.guild.roles)
 
-        welcome_thread = await welcome_channel.create_thread(
-            name=f"{member}'s interrogation",
-            invitable=False
-        )
+        if member.guild.premium_tier > 1:
+            welcome_thread = await welcome_channel.create_thread(
+                name=f"{member}'s interrogation",
+                invitable=False
+            )
+        else:
+            welcome_message = await welcome_channel.send(f"welcum {member.mention} to {member.guild.name}!")
+            welcome_thread = await welcome_message.create_thread(
+                name=f"{member}'s welcome thread"
+            )
 
-        await welcome_thread.send(f"welcome {member.mention}. pls wait here. a {mod_role.mention} wil b here soon 👍")
+        await welcome_thread.send(f"welcum {member.mention}. pls wait here. a {mod_role.mention} wil b here soon 👍")
         self.threads[welcome_thread] = member
 
     @discord.app_commands.command(name="accept", description="Approve the user to join the server.")

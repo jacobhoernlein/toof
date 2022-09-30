@@ -62,17 +62,10 @@ class MiscCog(commands.Cog):
         if now.weekday() != 4:
             return
 
-        async with self.bot.db.execute('SELECT * FROM guilds') as cursor:
-            guild_list = await cursor.fetchall()
-
-        for guild_item in guild_list:
-            guild_id = guild_item[0]
-            welcome_channel_id = guild_item[2]
-
-            guild = discord.utils.find(lambda g: g.id == guild_id, self.bot.guilds)
-            main_channel = discord.utils.find(lambda c: c.id == welcome_channel_id, guild.channels)
-
-            await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
+        async with self.bot.db.execute('SELECT welcome_channel_id FROM guilds') as cursor:
+            async for record in cursor:
+                main_channel = await self.bot.fetch_channel(record[0])
+                await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
 
     # Replies to messages that have certain phrases in them    
     @commands.Cog.listener()

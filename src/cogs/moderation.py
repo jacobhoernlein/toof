@@ -61,14 +61,19 @@ class ModCog(commands.Cog):
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
       
+    async def get_log_channel(self, guild: discord.Guild) -> discord.TextChannel | None:
+        """Get the guild's log_channel by searching the database."""
+
+        async with self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {guild.id}') as cursor:
+            log_channel_id: int = (await cursor.fetchone())[0]
+
+        return discord.utils.find(lambda c: c.id == log_channel_id, guild.channels)
+    
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
         """Snipes deleted messages and puts them into the erver's mod log."""
         
-        async with self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {message.guild.id}') as cursor:
-            log_channel_id: int = (await cursor.fetchone())[0]
-
-        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, message.guild.channels)
+        log_channel = await self.get_log_channel(message.guild)
         
         if message.author.bot or message.channel == log_channel:
             return
@@ -90,9 +95,10 @@ class ModCog(commands.Cog):
 
         await log_channel.send(embed=embed)
 
-    # Watches for messages being edited
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        """Watches for messages being edited and puts a summary in the log channel."""
+    
         if before.author.bot or before.content == after.content:
             return
 
@@ -115,12 +121,8 @@ class ModCog(commands.Cog):
         embed.set_footer(
             text=f"Message ID: {after.id}"
         )
-
-        async with self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {before.guild.id}') as cursor:
-            log_channel_id: int = (await cursor.fetchone())[0]
-            
-        log_channel = discord.utils.find(lambda c: c.id == log_channel_id, before.guild.channels)
-
+  
+        log_channel = await self.get_log_channel(before.guild)
         await log_channel.send(
             embed=embed,
             view=discord.ui.View().add_item(

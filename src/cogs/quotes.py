@@ -15,12 +15,21 @@ class QuotesCog(commands.Cog):
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-
-        self.quote_context = discord.app_commands.ContextMenu(
-            name="Quote Message",
-            callback=self.quote_context_callback
+        
+        self.bot.tree.add_command(
+            discord.app_commands.ContextMenu(
+                name="Quote Message",
+                callback=self.quote_context_callback
+            )
         )
-        self.bot.tree.add_command(self.quote_context)
+
+    async def get_quotes_channel(self, guild: discord.Guild) -> discord.TextChannel | None:
+        """Get the quotes channel of the guild by searching the database."""
+        
+        async with self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {guild.id}') as cursor:
+            quotes_channel_id: int = (await cursor.fetchone())[0]
+
+        return discord.utils.find(lambda c: c.id == quotes_channel_id, guild.channels)
 
     @discord.app_commands.guild_only()
     async def quote_context_callback(self, interaction: discord.Interaction, msg: discord.Message):
@@ -45,11 +54,7 @@ class QuotesCog(commands.Cog):
             icon_url=msg.author.avatar.url
         )
 
-        async with self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
-            quotes_channel_id: int = (await cursor.fetchone())[0]
-
-        quotes_channel = discord.utils.find(lambda c: c.id == quotes_channel_id, interaction.guild.channels)
-
+        quotes_channel = await self.get_quotes_channel(interaction.guild)
         await quotes_channel.send(
             content=f"Quote submitted by {interaction.user.mention}:",
             embed=embed,
@@ -85,12 +90,8 @@ class QuotesCog(commands.Cog):
             name=f"{member}:",
             icon_url=member.avatar.url
         )
-
-        async with self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
-            quotes_channel_id: int = (await cursor.fetchone())[0]
-            
-        quotes_channel = discord.utils.find(lambda c: c.id == quotes_channel_id, interaction.guild.channels)
-        
+  
+        quotes_channel = await self.get_quotes_channel(interaction.guild)
         await quotes_channel.send(
             content=f"Quote submitted by {interaction.user.mention}:",
             embed=embed
