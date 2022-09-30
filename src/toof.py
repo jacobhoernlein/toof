@@ -1,12 +1,9 @@
 """
-Establishes the config and bot classes,
-run with --main or --dev arguments to bring
-bot online.
+Establishes the bot class and main function.
 """
 
 import asyncio
 import os
-import sys
 
 import random
 from time import time
@@ -48,18 +45,6 @@ class ToofBot(commands.Bot):
     
 if __name__ == "__main__":
     
-    if len(sys.argv) != 2 or sys.argv[1] not in ['--main', '-m', '--dev', '-d']:
-        print("Choose an option:")
-        print("   --main, -m: Main branch.")
-        print("   --dev, -d : Dev branch.")
-        exit()
-
-    elif sys.argv[1] in ['--main', '-m']:
-        token = os.getenv('BOTTOKEN')
-
-    elif sys.argv[1] in ['--dev', '-d']:
-        token = os.getenv('TESTBOTTOKEN')
-
     bot = ToofBot(
         command_prefix="NO PREFIX",
         help_command=None,
@@ -67,6 +52,6 @@ if __name__ == "__main__":
         max_messages=5000
     )
 
-    bot.run(token)
+    bot.run(os.getenv('BOTTOKEN'))
     if bot.db.is_alive():
         asyncio.run(bot.db.close())

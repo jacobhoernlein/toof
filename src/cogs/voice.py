@@ -26,10 +26,30 @@ class VoiceCog(commands.Cog):
         )
 
     async def cog_load(self):
+        """Creates the dictionary when the cog is loaded with current voice users."""
+        
         for guild in self.bot.guilds:
             for voice_channel in guild.voice_channels:
                 for member in voice_channel.members:
                     self.voiceusers[member.id] = datetime.datetime.now()
+
+    @commands.Cog.listener()
+    async def on_resumed(self):
+        """When the connection to discord is resumed, catches any voice updates the bot may have missed."""
+
+        member_ids: list[int] = []
+        for guild in self.bot.guilds:
+            for voice_channel in guild.voice_channels:
+                for member in voice_channel.members:
+                    member_ids.append(member)
+
+        for member_id in self.voiceusers.keys():
+            if member_id not in member_ids:
+                del self.voiceusers[member_id]
+
+        for member_id in member_ids:
+            if member_id not in self.voiceusers.keys():
+                self.voiceusers[member_id] = datetime.datetime.now()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
@@ -48,8 +68,8 @@ class VoiceCog(commands.Cog):
             await interaction.response.send_message(content=f"{member.mention} isnt in a voice !", ephemeral=True)
             return
 
-        delta: datetime.timedelta = datetime.datetime.now() - self.voiceusers[member.id]
-        
+        delta = datetime.datetime.now() - self.voiceusers[member.id]
+
         seconds = delta.seconds
         days = delta.days
 
