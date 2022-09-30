@@ -68,9 +68,8 @@ class ModCog(commands.Cog):
         """Get the guild's log_channel by searching the database."""
 
         async with self.bot.db.execute(f'SELECT log_channel_id FROM guilds WHERE guild_id = {guild.id}') as cursor:
-            log_channel_id: int = (await cursor.fetchone())[0]
-
-        return discord.utils.find(lambda c: c.id == log_channel_id, guild.channels)
+            record = await cursor.fetchone()
+        return None if record is None else discord.utils.find(lambda c: c.id == record[0], guild.channels)
     
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):

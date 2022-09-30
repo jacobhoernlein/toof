@@ -27,9 +27,8 @@ class QuotesCog(commands.Cog):
         """Get the quotes channel of the guild by searching the database."""
         
         async with self.bot.db.execute(f'SELECT quotes_channel_id FROM guilds WHERE guild_id = {guild.id}') as cursor:
-            quotes_channel_id: int = (await cursor.fetchone())[0]
-
-        return discord.utils.find(lambda c: c.id == quotes_channel_id, guild.channels)
+            record = await cursor.fetchone()
+        return None if record is None else discord.utils.find(lambda c: c.id == record[0], guild.channels)
 
     @discord.app_commands.guild_only()
     async def quote_context_callback(self, interaction: discord.Interaction, msg: discord.Message):

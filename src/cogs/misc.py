@@ -58,6 +58,7 @@ class MiscCog(commands.Cog):
     @tasks.loop(hours=24)
     async def check_day(self):
         """Sends a good morning happy friday gif at certain time"""
+        
         now = datetime.datetime.now()
         if now.weekday() != 4:
             return

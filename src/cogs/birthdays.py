@@ -13,6 +13,7 @@ import toof
 
 
 class BirthdayCog(commands.Cog):
+    """Cog that contains a loop to watch birthdays and commands relating to them."""
 
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
@@ -42,10 +43,12 @@ class BirthdayCog(commands.Cog):
         # Loops over every welcome channel and sends a message to every birthday boy in that server
         async with self.bot.db.execute('SELECT welcome_channel_id FROM guilds') as cursor:
             async for record in cursor:
+                
                 welcome_channel = self.bot.get_channel(record[0])
                 if welcome_channel is None:
                     continue
 
+                # Creates a list of users that have a birthday and are in the current guild
                 bday_users_in_guild = [user for user in bday_users if user in welcome_channel.guild.members]
                 if len(bday_users_in_guild) == 0:
                     continue
@@ -76,16 +79,17 @@ class BirthdayCog(commands.Cog):
         # Ensures the birthday is formatted correctly.
         try:
             day = datetime.datetime.strptime(birthday, "%m/%d/%Y")
-        # Formatting went wrong
         except ValueError:
             await interaction.response.send_message("woof! you gotta format as mm/dd/yyyy", ephemeral=True)
             return
         else:
             day = day.strftime("%m/%d/%Y")
         
+        # Creates a list of user_ids that have birthdays in the database
         async with self.bot.db.execute('SELECT user_id FROM birthdays') as cursor:
             user_ids = [record[0] async for record in cursor]
             
+        # Updates the record if it exists or creates a new record if one doesn't exist.
         if interaction.user.id in user_ids:
             await self.bot.db.execute(
                 f'UPDATE birthdays SET birthday = \'{day}\' WHERE user_id = {interaction.user.id}'
