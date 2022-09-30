@@ -333,7 +333,7 @@ class RolesCog(commands.Cog):
     async def role_menu(self, interaction: discord.Interaction):
         """Sends the user the role add menu."""
         
-        guild_roles_dict = await self.get_guild_role_dict(interaction)
+        guild_roles_dict = await self.get_guild_role_dict(interaction.guild)
         await interaction.response.send_message(
             view=RoleAddView(interaction, guild_roles_dict, 'pings'),
             ephemeral=True
@@ -367,7 +367,7 @@ class RolesCog(commands.Cog):
     async def delete_role(self, interaction: discord.Interaction, type: discord.app_commands.Choice[int]):
         """Sends the user a menu to select a role to delete."""
         
-        guild_roles_dict = await self.get_guild_role_dict(interaction)
+        guild_roles_dict = await self.get_guild_role_dict(interaction.guild)
         await interaction.response.send_message(
             view=RoleDeleteView(guild_roles_dict, type.name.lower()),
             ephemeral=True

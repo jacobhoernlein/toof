@@ -61,7 +61,7 @@ class BirthdayCog(commands.Cog):
                 await welcome_channel.send(content)
 
     async def birthday_context_callback(self, interaction: discord.Interaction, member: discord.Member):
-        """Looks through the birthday file for the user and lets the user know if it found anything."""
+        """Looks through the birthdays table for the specified member and lets the caller know if it found anything."""
         
         async with self.bot.db.execute(f'SELECT birthday FROM birthdays WHERE user_id = {member.id}') as cursor:
             record = await cursor.fetchone()

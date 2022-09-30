@@ -66,13 +66,13 @@ class MiscCog(commands.Cog):
         async with self.bot.db.execute('SELECT welcome_channel_id FROM guilds') as cursor:
             async for record in cursor:
                 main_channel = self.bot.get_channel(record[0])
-                if main_channel is None:
-                    continue
-                await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
-
-    # Replies to messages that have certain phrases in them    
+                if main_channel:
+                    await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
+   
     @commands.Cog.listener()
     async def on_message(self, msg: discord.Message):
+        """Replies to messages with certain phrases and handles ping replies"""
+        
         if msg.author == self.bot.user:
             return
         
@@ -102,7 +102,7 @@ class MiscCog(commands.Cog):
                     
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction: discord.Reaction, usr: discord.User):
-        # If this was a ping reply situation, replies to the offender then removes the bot's reaction.
+        """If this was a ping reply situation, replies to the offender then removes the bot's reaction."""
 
         if reaction.message.mentions and reaction.message.reference \
         and reaction.emoji.name == 'toofping' \

@@ -30,7 +30,8 @@ class ModmailModal(discord.ui.Modal):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        
+        """Summarizes the modal data and sends it to the log channel of the guild."""
+
         embed = discord.Embed(
             color=discord.Color.blue(),
             description=self.details.value,
@@ -144,9 +145,10 @@ class ModCog(commands.Cog):
             )
         )
 
-    # Kicks people for listening to Say So by Doja Cat
     @commands.Cog.listener()
     async def on_presence_update(self, before: discord.Member, after: discord.Member):
+        """Kicks people for listening to Say So by Doja Cat"""
+        
         for activity in after.activities:
             if isinstance(activity, discord.Spotify):
                 if activity.title == "Say So" and activity.artist == "Doja Cat":
@@ -156,6 +158,8 @@ class ModCog(commands.Cog):
                     
     @discord.app_commands.command(name="modmail", description="Something bothering you? Tell the mods.")
     async def mod_mail(self, interaction: discord.Interaction):
+        """Sends the mod_mail modal to the user."""
+        
         await interaction.response.send_modal(ModmailModal(self.bot, title="New Modmail"))
 
 

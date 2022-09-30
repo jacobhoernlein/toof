@@ -4,6 +4,7 @@ run with --main or --dev arguments to bring
 bot online.
 """
 
+import asyncio
 import os
 import sys
 
@@ -65,4 +66,7 @@ if __name__ == "__main__":
         intents=discord.Intents.all(),
         max_messages=5000
     )
+
     bot.run(token)
+    if bot.db.is_alive():
+        asyncio.run(bot.db.close())

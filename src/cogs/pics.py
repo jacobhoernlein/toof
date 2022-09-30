@@ -17,87 +17,56 @@ import toof
 class ToofPic:
     """Representation of a ToofPic, including link, rarity, and ID"""
 
-    link: str
-    rarity: str
     id: str
-
+    link: str
+    
     def embed(self) -> discord.Embed:
         """Returns a Discord Embed representation of the ToofPic."""
 
-        if self.rarity == 'common':
+        if self.id[0] == 'C':
             embed = discord.Embed(color=discord.Color.green()).set_image(url=self.link)
             embed.set_footer(text=f"🐶Common🐶 • ID: {self.id}")
-        if self.rarity == 'rare':
+        if self.id[0] == 'R':
             embed = discord.Embed(color=discord.Color.blue()).set_image(url=self.link)
             embed.set_footer(text=f"💎Rare💎 • ID: {self.id}")
-        if self.rarity == 'legendary':
+        if self.id[0] == 'L':
             embed = discord.Embed(color=discord.Color.gold()).set_image(url=self.link)
             embed.set_footer(text=f"⭐LEGENDARY⭐ • ID: {self.id}")
 
         return embed
 
     def __lt__(self, pic: "ToofPic"):
-        return True if self.id < pic.id else False
+        return True if int(self.id[1:]) < int(pic.id[1:]) else False
 
 
 class ToofPics(list[ToofPic]):
     """A list of ToofPics, as well as methods relating."""
 
-    def commons(self) -> list[ToofPic]:
-        """Returns a list of ToofPics that are common."""
-        common_list = []
-        for toof_pic in self:
-            if toof_pic.rarity == 'common':
-                common_list.append(toof_pic)
-        return sorted(common_list)
+    def commons(self) -> "ToofPics":
+        """Returns a list of ToofPics that are common from self."""
+
+        return ToofPics(sorted([pic for pic in self if pic.id[0] == 'C']))
     
-    def rares(self) -> list[ToofPic]:
+    def rares(self) -> "ToofPics":
         """Returns a list of ToofPics that are rare."""
-        rare_list = []
-        for toof_pic in self:
-            if toof_pic.rarity == 'rare':
-                rare_list.append(toof_pic)
-        return sorted(rare_list)
+       
+        return ToofPics(sorted([pic for pic in self if pic.id[0] == 'R']))
 
-    def legendaries(self) -> list[ToofPic]:
+    def legendaries(self) -> "ToofPics":
         """Returns a list of ToofPics that are legendary."""
-        legendary_list = []
-        for toof_pic in self:
-            if toof_pic.rarity == 'legendary':
-                legendary_list.append(toof_pic)
-        return sorted(legendary_list)
+        
+        return ToofPics(sorted([pic for pic in self if pic.id[0] == 'L']))
 
-    def rand_common(self) -> ToofPic:
-        """Returns a random common ToofPic."""  
-        list = self.commons()
-        if len(list) > 0:
-            return random.choice(list)
-        return None
-
-    def rand_rare(self) -> ToofPic:
-        """Returns a random rare ToofPic."""  
-        list = self.rares()
-        if len(list) > 0:
-            return random.choice(list)
-        return None
-
-    def rand_legendary(self) -> ToofPic:
-        """Returns a random legendary ToofPic."""  
-        list = self.legendaries()
-        if len(list) > 0:
-            return random.choice(list)
-        return None
-
-    def overview(self, series: "ToofPics") -> discord.Embed:
+    def overview(self, collection: "ToofPics") -> discord.Embed:
         """
         Return a Discord embed summarizing the collection.
         The series is the collection of all pics used for comparison.
         """
 
-        description = f"You have found {len(self)} of {len(series)} different pics.\n"
-        description += f" • {len(self.commons())} / {len(series.commons())} commons 🐶\n"
-        description += f" • {len(self.rares())} / {len(series.rares())} rares 💎\n"
-        description += f" • {len(self.legendaries())} / {len(series.legendaries())} legendaries ⭐"
+        description = f"You have found {len(collection)} of {len(self)} different pics.\n"
+        description += f" • {len(collection.commons())} / {len(self.commons())} commons 🐶\n"
+        description += f" • {len(collection.rares())} / {len(self.rares())} rares 💎\n"
+        description += f" • {len(collection.legendaries())} / {len(self.legendaries())} legendaries ⭐"
 
         embed = discord.Embed(
             color=discord.Color.greyple(),
@@ -111,7 +80,7 @@ class ToofPics(list[ToofPic]):
 class ToofPicCollectionSelect(discord.ui.Select):
     """Drop down menu to select the page for Toof pic collection."""
 
-    def __init__(self, series: ToofPics, collection: ToofPics, page: str, *args, **kwargs):
+    def __init__(self, all_pics: ToofPics, user_collection: ToofPics, page: str, *args, **kwargs):
         
         options = [
             discord.SelectOption(
@@ -150,26 +119,26 @@ class ToofPicCollectionSelect(discord.ui.Select):
             *args, **kwargs
         )
 
-        self.series = series
-        self.collection = collection
+        self.all_pics = all_pics
+        self.user_collection = user_collection
 
     async def callback(self, interaction: discord.Interaction):
         page = self.values[0]
         
         if page == 'overview':
-            embed = self.collection.overview(self.series)
+            embed = self.all_pics.overview(self.user_collection)
             await interaction.response.edit_message(
                 embed=embed,
-                view=ToofPicCollectionView(self.series, self.collection, page)
+                view=ToofPicCollectionView(self.all_pics, self.user_collection, page)
             )
             return
 
         if page == 'common':
-            pics = self.collection.commons()
+            pics = self.user_collection.commons()
         if page == 'rare':
-            pics = self.collection.rares()
+            pics = self.user_collection.rares()
         if page == 'legendary':
-            pics = self.collection.legendaries()
+            pics = self.user_collection.legendaries()
 
         if len(pics) > 0:
             content = None
@@ -183,21 +152,21 @@ class ToofPicCollectionSelect(discord.ui.Select):
         await interaction.response.edit_message(
             content=content,
             embed=embed,
-            view=ToofPicCollectionView(self.series, self.collection, page, pic)
+            view=ToofPicCollectionView(self.all_pics, self.user_collection, page, pic)
         )
 
 
 class ToofPicPreviousButton(discord.ui.Button):
     """Changes to the previous Toof pic in the collection."""
 
-    def __init__(self, series: ToofPics, collection: ToofPics, page: str, curr_pic: ToofPic, *args, **kwargs):
+    def __init__(self, all_pics: ToofPics, user_collection: ToofPics, page: str, curr_pic: ToofPic, *args, **kwargs):
         
         if page == 'common':
-            pics = collection.commons()
+            pics = user_collection.commons()
         if page == 'rare':
-            pics = collection.rares()
+            pics = user_collection.rares()
         if page == 'legendary':
-            pics = collection.legendaries()
+            pics = user_collection.legendaries()
         
         super().__init__(
             disabled=(curr_pic is None or len(pics) < 2),
@@ -214,8 +183,8 @@ class ToofPicPreviousButton(discord.ui.Button):
         if index == -1:
             index = len(pics) - 1
 
-        self.series = series
-        self.collection = collection
+        self.all_pics = all_pics
+        self.user_collection = user_collection
         self.page = page
         self.previous_pic = pics[index]
 
@@ -223,8 +192,8 @@ class ToofPicPreviousButton(discord.ui.Button):
         await interaction.response.edit_message(
             embed=self.previous_pic.embed(),
             view=ToofPicCollectionView(
-                series=self.series,
-                collection=self.collection,
+                all_pics=self.all_pics,
+                user_collection=self.user_collection,
                 page=self.page,
                 pic=self.previous_pic
             )
@@ -234,14 +203,14 @@ class ToofPicPreviousButton(discord.ui.Button):
 class ToofPicNextButton(discord.ui.Button):
     """Changes to next Toof pic in collection."""
 
-    def __init__(self, series: ToofPics, collection: ToofPics, page: str, curr_pic: ToofPic, *args, **kwargs):
+    def __init__(self, all_pics: ToofPics, user_collection: ToofPics, page: str, curr_pic: ToofPic, *args, **kwargs):
         
         if page == 'common':
-            pics = collection.commons()
+            pics = user_collection.commons()
         if page == 'rare':
-            pics = collection.rares()
+            pics = user_collection.rares()
         if page == 'legendary':
-            pics = collection.legendaries()
+            pics = user_collection.legendaries()
         
         super().__init__(
             disabled=(curr_pic is None or len(pics) < 2),
@@ -258,8 +227,8 @@ class ToofPicNextButton(discord.ui.Button):
         if index == len(pics):
             index = 0
 
-        self.series = series
-        self.collection = collection
+        self.all_pics = all_pics
+        self.user_collection = user_collection
         self.page = page
         self.next_pic = pics[index]
 
@@ -267,8 +236,8 @@ class ToofPicNextButton(discord.ui.Button):
         await interaction.response.edit_message(
             embed=self.next_pic.embed(),
             view=ToofPicCollectionView(
-                series=self.series,
-                collection=self.collection,
+                all_pics=self.all_pics,
+                user_collection=self.user_collection,
                 page=self.page,
                 pic=self.next_pic
             )
@@ -301,79 +270,81 @@ class ToofPicShareButton(discord.ui.Button):
 class ToofPicCollectionView(discord.ui.View):
     """View containing a page select button, and buttons to navigate the page."""
 
-    def __init__(self, series: ToofPics, collection: ToofPics, page: str, pic: ToofPic = None, *args, **kwargs):
+    def __init__(self, all_pics: ToofPics, user_collection: ToofPics, page: str, pic: ToofPic = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.add_item(ToofPicCollectionSelect(series, collection, page))
+        self.add_item(ToofPicCollectionSelect(all_pics, user_collection, page))
 
         if page != 'overview':
-            self.add_item(ToofPicPreviousButton(series, collection, page, pic))
-            self.add_item(ToofPicNextButton(series, collection, page, pic))
+            self.add_item(ToofPicPreviousButton(all_pics, user_collection, page, pic))
+            self.add_item(ToofPicNextButton(all_pics, user_collection, page, pic))
             self.add_item(ToofPicShareButton(pic))
 
 
 class ToofPicsCog(commands.Cog):
     """Cog which contains commands to interact with the Toof Pics extension."""
 
-    toofpics: ToofPics
-
     def __init__(self, bot: toof.ToofBot):
         self.bot = bot
     
-    async def cog_load(self):
-        self.toofpics = await self.get_collection(0)
-
     async def get_collection(self, user_id: int) -> ToofPics:
         """Get a list of ToofPics that belong to the given user_id. 0 for all ToofPics."""
         
-        collection = ToofPics()
         async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {user_id}') as cursor:
-            async for record in cursor:
-                link: str = record[2]
-                id: str = record[1]
-
-                if id[0] == 'C':
-                    rarity: str = 'common'
-                elif id[0] == 'R':
-                    rarity: str = 'rare'
-                else:
-                    rarity: str = 'legendary'
-
-                collection.append(ToofPic(link, rarity, id))
-        
+            collection = ToofPics([ToofPic(record[1], record[2]) async for record in cursor])
         return collection
+
+    async def get_random_pic(self, user_id: int) -> ToofPic | None:
+        """
+        Selects a random ToofPic from the given user_id and returns it weighted by rarity.
+        Returns none if there are no pictures.
+        """
+
+        user_collection = await self.get_collection(user_id)
+
+        num = random.randint(1, 256)
+        if num >= 1 and num <= 3:
+            try:
+                pic = random.choice(user_collection.legendaries())
+            except IndexError:
+                num = 4
+        if num >= 4 and num <= 25:
+            try:
+                pic = random.choice(user_collection.rares())
+            except IndexError:
+                num = 26
+        if num >= 26 and num <= 256:
+            try:
+                pic = random.choice(user_collection.commons())
+            except IndexError:
+                pic = None
+
+        return pic
 
     @discord.app_commands.command(name="pic", description="Get a random Toof pic.")
     async def toof_pic_command(self, interaction: discord.Interaction):
         """Selects a rarity based on chance, opens that a file of that rarity, and sends it."""
 
-        # Selects a random toofpic weighted by rarity.
-        num = random.randint(1, 256)
-        if num >= 1 and num <= 3:
-            pic = self.toofpics.rand_legendary()
-        elif num >= 4 and num <= 25:
-            pic = self.toofpics.rand_rare()
+        pic = await self.get_random_pic(0)
+
+        if pic is None:
+            await interaction.response.send_message("somethig went wrong :/", ephemeral=True)
         else:
-            pic = self.toofpics.rand_common()
+            await interaction.response.send_message(embed=pic.embed())
 
-        await interaction.response.send_message(embed=pic.embed())
-
-        user_id = interaction.user.id
-        pic_id = pic.id
-        link = pic.link
-
-        # Searches for if the pic already has been found by the user, creates record if not.
-        async with self.bot.db.execute(f'SELECT * FROM pics WHERE user_id = {user_id} AND pic_id = \'{pic_id}\'') as cursor:
-            record = await cursor.fetchone()
-
-        if record is None:
-            await self.bot.db.execute(f'INSERT INTO pics VALUES ({user_id}, \'{pic_id}\', \'{link}\')')
+        user_collection = await self.get_collection(interaction.user.id)
+        if pic not in user_collection:
+            await self.bot.db.execute(
+                f'INSERT INTO pics VALUES ({interaction.user.id}, \'{pic.id}\', \'{pic.link}\')'
+            )
             await self.bot.db.commit()
 
+            
     @discord.app_commands.command(name="pics", description="See what Toof pics you've collected.")
     async def toof_pic_collection(self, interaction: discord.Interaction):
         """Allows users to see their collection of pics."""
-        
+
+        all_pics = await self.get_collection(0)
         user_collection = await self.get_collection(interaction.user.id)
 
         if len(user_collection) == 0:
@@ -383,39 +354,33 @@ class ToofPicsCog(commands.Cog):
             )
         else:
             await interaction.response.send_message(
-                embed=user_collection.overview(self.toofpics),
-                view=ToofPicCollectionView(self.toofpics, user_collection, 'overview'),
+                embed=all_pics.overview(user_collection),
+                view=ToofPicCollectionView(all_pics, user_collection, 'overview'),
                 ephemeral=True
             )
 
     @discord.app_commands.command(name="newpic", description="Add a new Toof pic with a given image link.")
     @discord.app_commands.describe(rarity="The rarity of the new ToofPic.", link="A link to the picture.")
     @discord.app_commands.choices(rarity=[
-        discord.app_commands.Choice(name="Common", value='common'),
-        discord.app_commands.Choice(name="Rare", value='rare'),
-        discord.app_commands.Choice(name="Legendary", value='legendary')
+        discord.app_commands.Choice(name="Common", value='C'),
+        discord.app_commands.Choice(name="Rare", value='R'),
+        discord.app_commands.Choice(name="Legendary", value='L')
     ])
     async def toof_pic_add(self, interaction: discord.Interaction, rarity: discord.app_commands.Choice[str], link: str):
-        
+        """Adds a new pic to the database, only usable by me."""
+
         if interaction.user.id != 243845903146811393:
             await interaction.response.send_message(content="woof !u cant do that!", ephemeral=True)
             return
 
-        if rarity.value == 'common':
-            id = f"C{(len(self.toofpics)+1):03d}"
-        if rarity.value == 'rare':
-            id = f"R{(len(self.toofpics)+1):03d}"
-        if rarity.value == 'legendary':
-            id = f"L{(len(self.toofpics)+1):03d}"
-
-        toofpic = ToofPic(link, rarity.value, id)
-        self.toofpics.append(toofpic)
+        all_pics = await self.get_collection(0)
+        id = f'{rarity.value}{(len(all_pics)+1):03d}'
+        toofpic = ToofPic(id, link)
 
         await self.bot.db.execute(f'INSERT INTO pics VALUES (0, \'{id}\', \'{link}\')')
         await self.bot.db.commit()
 
         await interaction.response.send_message(content="pic added:", embed=toofpic.embed(), ephemeral=True)
         
-    
 async def setup(bot: toof.ToofBot):
     await bot.add_cog(ToofPicsCog(bot))
