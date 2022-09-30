@@ -29,13 +29,13 @@ class VoiceCog(commands.Cog):
         for guild in self.bot.guilds:
             for voice_channel in guild.voice_channels:
                 for member in voice_channel.members:
-                    self.voiceusers[member.id] = datetime.now()
+                    self.voiceusers[member.id] = datetime.datetime.now()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         # Member joins a voice channel
         if after.channel and member.id not in self.voiceusers.keys():
-            self.voiceusers[member.id] = datetime.now()
+            self.voiceusers[member.id] = datetime.datetime.now()
         # Member leaves voice
         if not after.channel and member.id in self.voiceusers.keys():
             del self.voiceusers[member.id]
@@ -48,7 +48,7 @@ class VoiceCog(commands.Cog):
             await interaction.response.send_message(content=f"{member.mention} isnt in a voice !", ephemeral=True)
             return
 
-        delta: datetime.timedelta = datetime.now() - self.voiceusers[member.id]
+        delta: datetime.timedelta = datetime.datetime.now() - self.voiceusers[member.id]
         
         seconds = delta.seconds
         days = delta.days
