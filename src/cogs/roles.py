@@ -380,7 +380,7 @@ class RolesCog(commands.Cog):
         """Removes the role from the config if it was created through commands."""
 
         async with self.bot.db.execute(f'SELECT role_id FROM roles WHERE guild_id = {role.guild.id}') as cursor:
-            role_ids = [record[0] for record in await cursor.fetchall()]
+            role_ids = [record[0] async for record in cursor]
 
         if role.id in role_ids:
             await self.bot.db.execute(f'DELETE FROM roles WHERE role_id = {role.id}')
