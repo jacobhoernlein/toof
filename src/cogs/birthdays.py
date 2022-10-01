@@ -85,12 +85,10 @@ class BirthdayCog(commands.Cog):
         else:
             day = day.strftime("%m/%d/%Y")
         
-        # Creates a list of user_ids that have birthdays in the database
-        async with self.bot.db.execute('SELECT user_id FROM birthdays') as cursor:
-            user_ids = [record[0] async for record in cursor]
+        async with self.bot.db.execute(f'SELECT * FROM birthdays WHERE user_id = {interaction.user.id}') as cursor:
+            record = await cursor.fetchone()
             
-        # Updates the record if it exists or creates a new record if one doesn't exist.
-        if interaction.user.id in user_ids:
+        if record:
             await self.bot.db.execute(f'UPDATE birthdays SET birthday = \'{day}\' WHERE user_id = {interaction.user.id}')
         else:
             await self.bot.db.execute(f'INSERT INTO birthdays VALUES ({interaction.user.id}, \'{day}\')')

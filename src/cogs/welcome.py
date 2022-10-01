@@ -23,28 +23,22 @@ class WelcomeCog(commands.Cog):
         
         async with self.bot.db.execute(f'SELECT welcome_channel_id, mod_role_id FROM guilds WHERE guild_id = {member.guild.id}') as cursor:
             record = await cursor.fetchone()
-
-        try:
+        if record is None:
+            welcome_channel = None
+            mod_role = None
+        else:
             welcome_channel = self.bot.get_channel(record[0])
             mod_role = discord.utils.find(lambda r: r.id == record[1], member.guild.roles)
-        except TypeError:
-            # Record was None type; couldn't subscript (no result)
-            return
         
         if welcome_channel is None or mod_role is None:
             return
 
         if member.guild.premium_tier > 1:
-            welcome_thread = await welcome_channel.create_thread(
-                name=f"{member}'s interrogation",
-                invitable=False
-            )
+            welcome_thread = await welcome_channel.create_thread(name=f"{member}'s interrogation", invitable=False)
             await welcome_thread.send(f"welcum {member.mention}. pls wait here. a {mod_role.mention} wil b here soon 👍")
         else:
             welcome_message = await welcome_channel.send(f"welcum {member.mention} to {member.guild.name}!")
-            welcome_thread = await welcome_message.create_thread(
-                name=f"{member}'s welcome thread"
-            )
+            welcome_thread = await welcome_message.create_thread(name=f"{member}'s welcome thread")
 
         self.threads[welcome_thread] = member
 
@@ -53,26 +47,24 @@ class WelcomeCog(commands.Cog):
     async def accept_user(self, interaction: discord.Interaction):
         """Adds the member role to the user and locks the guild."""
 
+        if interaction.channel not in self.threads.keys():
+            await interaction.response.send_message("u gota do this in a welcom thread !", ephemeral=True)
+            return
+        else:
+            thread = interaction.channel
+            member = self.threads[thread]
+
         async with self.bot.db.execute(f'SELECT member_role_id FROM guilds WHERE guild_id = {interaction.guild_id}') as cursor:
             record = await cursor.fetchone()
-
-        try:    
+        if record is None:
+            member_role = None
+        else:
             member_role = discord.utils.find(lambda c: c.id == record[0], interaction.guild.roles)
-        except TypeError:
-            # Record was None type; couldn't subscript (no result)
-            await interaction.response.send_message("uh oh. make sure ur member role is set up!", ephemeral=True)
+        
+        if member_role is None:
+            await interaction.response.send_message("make sur ur member role is set up right 👍", ephemeral=True)
             return
         
-        if interaction.channel not in self.threads.keys() or member_role is None:
-            await interaction.response.send_message(
-                "u gota do this in a welcom thread. (if this is a wlcome thred, make sur ur member role is set up right 👍)",
-                ephemeral=True
-            )
-            return
-        
-        thread: discord.Thread = interaction.channel
-        member = self.threads[thread]
-
         await interaction.response.send_message(f"{member.mention} haz been accepted 😎")
         await member.add_roles(member_role)
         await thread.edit(archived=True, locked=True)
@@ -83,11 +75,11 @@ class WelcomeCog(commands.Cog):
     async def reject_user(self, interaction: discord.Interaction):
         
         if interaction.channel not in self.threads.keys():
-            await interaction.response.send_message("gotta do this in a thred!", ephemeral=True)
+            await interaction.response.send_message("u gota do this in a welcom thread !", ephemeral=True)
             return
-        
-        thread: discord.Thread = interaction.channel
-        member = self.threads[thread]
+        else:
+            thread = interaction.channel
+            member = self.threads[thread]
 
         await interaction.response.send_message(f"{member} haz been rejected")
         await member.kick()

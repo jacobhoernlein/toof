@@ -158,7 +158,7 @@ class ModCog(commands.Cog):
                     
     @discord.app_commands.command(name="modmail", description="Something bothering you? Tell the mods.")
     async def mod_mail(self, interaction: discord.Interaction):
-        """Sends the mod_mail modal to the user."""
+        """Sends the modmail modal to the user."""
         
         await interaction.response.send_modal(ModmailModal(self.bot, title="New Modmail"))
 

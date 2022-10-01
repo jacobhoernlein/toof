@@ -16,6 +16,7 @@ import toof
 @dataclass
 class ConfigRole:
     """Class containing a role and information on that role."""
+    
     role: discord.Role
     description: str
     emoji: discord.PartialEmoji
@@ -137,7 +138,8 @@ class RoleAddView(discord.ui.View):
             row=0
         ))
 
-        self.add_item(RoleAddSelect(interaction, roles, role_type))
+        if len(roles[role_type]) > 0:
+            self.add_item(RoleAddSelect(interaction, roles, role_type))
 
 
 class RoleCreateModal(discord.ui.Modal):
@@ -377,12 +379,8 @@ class RolesCog(commands.Cog):
     async def on_guild_role_delete(self, role: discord.Role):
         """Removes the role from the config if it was created through commands."""
 
-        async with self.bot.db.execute(f'SELECT role_id FROM roles WHERE guild_id = {role.guild.id}') as cursor:
-            role_ids = [record[0] async for record in cursor]
-
-        if role.id in role_ids:
-            await self.bot.db.execute(f'DELETE FROM roles WHERE role_id = {role.id}')
-            await self.bot.db.commit()
+        await self.bot.db.execute(f'DELETE FROM roles WHERE role_id = {role.id}')
+        await self.bot.db.commit()
 
 
 async def setup(bot: toof.ToofBot):

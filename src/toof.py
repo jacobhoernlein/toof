@@ -20,8 +20,9 @@ class ToofBot(commands.Bot):
     db: aiosqlite.Connection
 
     async def on_ready(self):
+        """Connects to the database and loads cogs, as well as syncs the command tree."""
+
         self.db = await aiosqlite.connect('toof.sqlite')
-        
         await self.db.execute('CREATE TABLE IF NOT EXISTS birthdays (user_id INTEGER, birthday TEXT)')
         await self.db.execute('CREATE TABLE IF NOT EXISTS roles (guild_id INTEGER, role_id INTEGER, emoji TEXT, description TEXT, type TEXT)')
         await self.db.execute('CREATE TABLE IF NOT EXISTS pics (user_id INTEGER, pic_id TEXT, link TEXT)')
@@ -33,22 +34,17 @@ class ToofBot(commands.Bot):
                 await self.load_extension(f'cogs.{filename[:-3]}')
 
         await self.tree.sync()
+        
         print("""
  _____             __   ___       _   
 /__   \___   ___  / _| / __\ ___ | |_ 
   / /\/ _ \ / _ \| |_ /__\/// _ \| __|
  / / | (_) | (_) |  _/ \/  \ (_) | |_ 
  \/   \___/ \___/|_| \_____/\___/ \__|
-                     Running Toof v2.5"""
+                     Running Toof v2.6"""
         )
 
-    async def on_disconnect(self):
-        await self.db.close()
 
-    async def on_resumed(self):
-        self.db = await aiosqlite.connect('toof.sqlite')
-    
-    
 if __name__ == "__main__":
     
     bot = ToofBot(
@@ -59,8 +55,4 @@ if __name__ == "__main__":
     )
 
     bot.run(os.getenv('BOTTOKEN'))
-    
-    try:
-        asyncio.run(bot.db.close())
-    except ValueError:
-        pass
+    asyncio.run(bot.db.close())

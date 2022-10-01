@@ -301,22 +301,25 @@ class ToofPicsCog(commands.Cog):
         """
 
         user_collection = await self.get_collection(user_id)
+        legendaries = user_collection.legendaries()
+        rares = user_collection.rares()
+        commons = user_collection.commons()
 
         num = random.randint(1, 256)
         if num >= 1 and num <= 3:
-            try:
-                pic = random.choice(user_collection.legendaries())
-            except IndexError:
+            if len(legendaries) > 0:
+                pic = random.choice(legendaries)
+            else:
                 num = 4
         if num >= 4 and num <= 25:
-            try:
-                pic = random.choice(user_collection.rares())
-            except IndexError:
+            if len(rares) > 0:
+                pic = random.choice(rares)
+            else:
                 num = 26
         if num >= 26 and num <= 256:
-            try:
-                pic = random.choice(user_collection.commons())
-            except IndexError:
+            if len(commons) > 0:
+                pic = random.choice(commons)
+            else:
                 pic = None
 
         return pic
