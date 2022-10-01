@@ -37,22 +37,27 @@ class VoiceCog(commands.Cog):
     async def on_resumed(self):
         """When the connection to discord is resumed, catches any voice updates the bot may have missed."""
 
-        member_ids: list[int] = []
+        # Creates a list of all members currently in a voice channel
+        current_member_ids: list[int] = []
         for guild in self.bot.guilds:
             for voice_channel in guild.voice_channels:
                 for member in voice_channel.members:
-                    member_ids.append(member)
+                    current_member_ids.append(member)
 
-        for member_id in self.voiceusers.keys():
-            if member_id not in member_ids:
-                del self.voiceusers[member_id]
+        # Deletes all members from the dict who are no longer in a voice channel
+        ids_to_delete = [member_id for member_id in self.voiceusers.keys() if member_id not in current_member_ids]
+        for id in ids_to_delete:
+            del self.voiceusers[id]
 
-        for member_id in member_ids:
-            if member_id not in self.voiceusers.keys():
-                self.voiceusers[member_id] = datetime.datetime.now()
+        # Adds all members to the dict who need to be added
+        ids_to_add = [member_id for member_id in current_member_ids if member_id not in self.voiceusers.keys()]
+        for id in ids_to_add:
+            self.voiceusers[id] = datetime.datetime.now()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        """Handles users joining or leaving a channel by updating the dict."""
+        
         # Member joins a voice channel
         if after.channel and member.id not in self.voiceusers.keys():
             self.voiceusers[member.id] = datetime.datetime.now()
@@ -62,7 +67,7 @@ class VoiceCog(commands.Cog):
 
     @discord.app_commands.guild_only()
     async def check_voice_time_context_callback(self, interaction: discord.Interaction, member: discord.Member):
-        """Checks how long you've been in a voice channel"""
+        """Checks how long a given user has been in a voice channel."""
         
         if member.id not in self.voiceusers.keys():
             await interaction.response.send_message(content=f"{member.mention} isnt in a voice !", ephemeral=True)
