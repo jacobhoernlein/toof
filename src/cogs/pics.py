@@ -334,9 +334,7 @@ class ToofPicsCog(commands.Cog):
 
         user_collection = await self.get_collection(interaction.user.id)
         if pic not in user_collection:
-            await self.bot.db.execute(
-                f'INSERT INTO pics VALUES ({interaction.user.id}, \'{pic.id}\', \'{pic.link}\')'
-            )
+            await self.bot.db.execute(f'INSERT INTO pics VALUES ({interaction.user.id}, \'{pic.id}\', \'{pic.link}\')')
             await self.bot.db.commit()
 
             

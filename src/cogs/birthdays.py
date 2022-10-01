@@ -91,13 +91,9 @@ class BirthdayCog(commands.Cog):
             
         # Updates the record if it exists or creates a new record if one doesn't exist.
         if interaction.user.id in user_ids:
-            await self.bot.db.execute(
-                f'UPDATE birthdays SET birthday = \'{day}\' WHERE user_id = {interaction.user.id}'
-            )
+            await self.bot.db.execute(f'UPDATE birthdays SET birthday = \'{day}\' WHERE user_id = {interaction.user.id}')
         else:
-            await self.bot.db.execute(
-                f'INSERT INTO birthdays VALUES ({interaction.user.id}, \'{day}\')'
-            )
+            await self.bot.db.execute(f'INSERT INTO birthdays VALUES ({interaction.user.id}, \'{day}\')')
         await self.bot.db.commit()
 
         await interaction.response.send_message("updooted !", ephemeral=True)
