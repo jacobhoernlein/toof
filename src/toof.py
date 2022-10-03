@@ -1,6 +1,4 @@
-"""
-Establishes the bot class and main function.
-"""
+"""Establishes the bot class and main function."""
 
 import asyncio
 import os
@@ -15,23 +13,27 @@ from discord.ext import commands
 
 
 class ToofBot(commands.Bot):
-    """Subclass of commands.Bot that contains an aiosqlite connection."""
+    """Subclass of commands.Bot that contains an aiosqlite
+    connection.
+    """
 
     db: aiosqlite.Connection
 
     async def on_ready(self):
-        """Connects to the database and loads cogs, as well as syncs the command tree."""
+        """Connects to the database and loads cogs, as well as syncs
+        the command tree.
+        """
 
-        self.db = await aiosqlite.connect('toof.sqlite')
-        await self.db.execute('CREATE TABLE IF NOT EXISTS birthdays (user_id INTEGER, birthday TEXT)')
-        await self.db.execute('CREATE TABLE IF NOT EXISTS roles (guild_id INTEGER, role_id INTEGER, emoji TEXT, description TEXT, type TEXT)')
-        await self.db.execute('CREATE TABLE IF NOT EXISTS pics (user_id INTEGER, pic_id TEXT, link TEXT)')
-        await self.db.execute('CREATE TABLE IF NOT EXISTS guilds (guild_id INTEGER, log_channel_id INTEGER, welcome_channel_id INTEGER, quotes_channel_id INTEGER, mod_role_id INTEGER, member_role_id INTEGER)')
+        self.db = await aiosqlite.connect("toof.sqlite")
+        await self.db.execute("CREATE TABLE IF NOT EXISTS birthdays (user_id INTEGER, birthday TEXT)")
+        await self.db.execute("CREATE TABLE IF NOT EXISTS roles (guild_id INTEGER, role_id INTEGER, emoji TEXT, description TEXT, type TEXT)")
+        await self.db.execute("CREATE TABLE IF NOT EXISTS pics (user_id INTEGER, pic_id TEXT, link TEXT)")
+        await self.db.execute("CREATE TABLE IF NOT EXISTS guilds (guild_id INTEGER, log_channel_id INTEGER, welcome_channel_id INTEGER, quotes_channel_id INTEGER, mod_role_id INTEGER, member_role_id INTEGER)")
         await self.db.commit()
 
-        for filename in os.listdir('src/cogs'):
-            if filename.endswith('.py'):
-                await self.load_extension(f'cogs.{filename[:-3]}')
+        for filename in os.listdir("src"):
+            if filename != "toof.py" and filename.endswith(".py"):
+                await self.load_extension(filename[:-3])
 
         await self.tree.sync()
         
@@ -54,5 +56,5 @@ if __name__ == "__main__":
         max_messages=5000
     )
 
-    bot.run(os.getenv('BOTTOKEN'))
+    bot.run(os.getenv("BOTTOKEN"))
     asyncio.run(bot.db.close())

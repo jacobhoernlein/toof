@@ -1,6 +1,5 @@
-"""
-Extension that includes small features that did not fit into
-other extensions. Ping command, status changes, happy friday, etc.
+"""Extension that includes small features that did not fit into other
+extensions. Ping command, status changes, happy friday, etc.
 """
 
 import datetime
@@ -33,24 +32,19 @@ class MiscCog(commands.Cog):
         activities = [
             discord.Activity(
                 type=discord.ActivityType.watching,
-                name="the mailman"
-            ),
+                name="the mailman"),
             discord.Activity(
                 type=discord.ActivityType.watching,
-                name="you pee"
-            ),
+                name="you pee"),
             discord.Activity(
                 type=discord.ActivityType.listening,
-                name="bees"
-            ),
+                name="bees"),
             discord.Activity(
                 type=discord.ActivityType.listening,
-                name="february face"
-            ),
+                name="february face"),
             discord.Activity(
                 type=discord.ActivityType.playing,
-                name="with a ball"
-            )
+                name="with a ball")
         ]
 
         await self.bot.change_presence(activity=choice(activities))
@@ -63,59 +57,78 @@ class MiscCog(commands.Cog):
         if now.weekday() != 4:
             return
 
-        async with self.bot.db.execute('SELECT welcome_channel_id FROM guilds') as cursor:
-            async for record in cursor:
-                main_channel = self.bot.get_channel(record[0])
-                if main_channel:
+        query = "SELECT welcome_channel_id FROM guilds"
+        async with self.bot.db.execute(query) as cursor:
+            async for row in cursor:
+                main_channel = self.bot.get_channel(row[0])
+                if main_channel is not None:
                     await main_channel.send("https://tenor.com/view/happy-friday-good-morning-friday-morning-gif-13497103")
    
     @commands.Cog.listener()
     async def on_message(self, msg: discord.Message):
-        """Replies to messages with certain phrases and handles ping replies"""
+        """Replies to messages with certain phrases
+        and handles ping replies
+        """
         
         if msg.author == self.bot.user:
             return
         
         # Responds to messages with certain phrases
-        content = msg.content
-        if "car ride" in content.lower():
+        if "car ride" in msg.content.lower():
             print("CAR RIDE?")
             await msg.channel.send("WOOF.")
-        elif "good boy" in content.lower():
+        elif "good boy" in msg.content.lower():
             print("I'M A GOOD BOY!!")
             await msg.channel.send("WOOF.")
-        elif "Connor" in content:
+        elif "Connor" in msg.content:
             await msg.channel.send("connor*")
 
         # Handles ping replies
         if msg.mentions and msg.reference:
+            
             if msg.reference.cached_message.author.bot:
                 return
-            emoji = discord.utils.find(lambda e : e.name == 'toofping', msg.guild.emojis)
-            if emoji:
+
+            emoji = discord.utils.find(
+                lambda e : e.name == "toofping",
+                msg.guild.emojis)
+
+            if emoji is not None:
                 await msg.add_reaction(emoji)
             else:
                 await msg.add_reaction("🇵")
                 await msg.add_reaction("🇮")
                 await msg.add_reaction("🇳")
                 await msg.add_reaction("🇬")            
-                    
+
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction: discord.Reaction, usr: discord.User):
-        """If this was a ping reply situation, replies to the offender then removes the bot's reaction."""
+    async def on_reaction_add(
+            self, reaction: discord.Reaction,
+            user: discord.User):
+        """If this was a ping reply situation, replies to the offender
+        then removes the bot's reaction.
+        """
 
-        if reaction.message.mentions and reaction.message.reference \
-        and reaction.emoji.name == 'toofping' \
-        and self.bot.user in [member async for member in reaction.users()]:
-            if reaction.message.reference.cached_message.author == usr:
-                await reaction.message.reply(f"https://tenor.com/view/discord-reply-discord-reply-off-discord-reply-gif-22150762")
-                await reaction.message.remove_reaction(reaction.emoji, self.bot.user)
+        if (reaction.message.mentions
+            and reaction.message.reference is not None
+            and reaction.message.reference.cached_message is not None
+            and self.bot.user in [member async for member in reaction.users()]
+            and reaction.emoji.name == "toofping"):
+            if user == reaction.message.reference.cached_message.author:
+                await reaction.message.reply("https://tenor.com/view/discord-reply-discord-reply-off-discord-reply-gif-22150762")
+                await reaction.message.remove_reaction(
+                    reaction.emoji,
+                    self.bot.user)
 
-    @discord.app_commands.command(name="speak", description="Check Toof's latency.")
-    async def speak(self, interaction: discord.Interaction):
+    @discord.app_commands.command(
+        name="speak",
+        description="Check Toof's latency.")
+    async def speak_command(self, interaction: discord.Interaction):
         """Equivelant of the ping command."""
         
-        await interaction.response.send_message(f"woof! ({round(self.bot.latency * 1000)}ms)", ephemeral=True)
+        await interaction.response.send_message(
+            f"woof! ({round(self.bot.latency * 1000)}ms)",
+            ephemeral=True)
 
     
 async def setup(bot: toof.ToofBot):
