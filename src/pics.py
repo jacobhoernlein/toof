@@ -4,6 +4,7 @@ they can see their entire collection using /pics.
 """
 
 from dataclasses import dataclass
+from enum import Enum
 import random
 
 import discord
@@ -12,116 +13,172 @@ from discord.ext import commands
 import toof
 
 
+class ToofPicRarity(Enum):
+    """Enum representing ToofPic Raritys."""
+
+    common = 1
+    rare = 2
+    legendary = 3
+    unknown = 100
+
+
 @dataclass
 class ToofPic:
-    """A representation of a ToofPic. Contains an id, link, and
-    embed.
+    """A representation of a ToofPic. Contains an id, link, rarity,
+    and embed.
     """
 
     id: str
     link: str
     
     @property
-    def embed(self):
-        """A Discord Embed representation of the ToofPic."""
-
-        if self.id[0] == "C":
+    def rarity(self) -> ToofPicRarity:
+        if self.id.startswith("C"):
+            return ToofPicRarity.common
+        elif self.id.startswith("R"):
+            return ToofPicRarity.rare
+        elif self.id.startswith("L"):
+            return ToofPicRarity.legendary
+        else:
+            return ToofPicRarity.unknown
+        
+    @property
+    def embed(self) -> discord.Embed:
+        if self.rarity == ToofPicRarity.common:
             embed = discord.Embed(color=discord.Color.green())
             embed.set_footer(text=f"🐶Common🐶 • ID: {self.id}")
-        elif self.id[0] == "R":
+        elif self.rarity == ToofPicRarity.rare:
             embed = discord.Embed(color=discord.Color.blue())
             embed.set_footer(text=f"💎Rare💎 • ID: {self.id}")
-        elif self.id[0] == "L":
+        elif self.rarity == ToofPicRarity.legendary:
             embed = discord.Embed(color=discord.Color.gold())
             embed.set_footer(text=f"⭐LEGENDARY⭐ • ID: {self.id}")
         else:
             embed = discord.Embed(color=discord.Color.blurple())
-            embed.set_footer(text=f"❓Unknown❓ • ID: {self.id}")
-
+            embed.set_footer(text=f"ID: {self.id}")
+    
         embed.set_image(url=self.link)
         return embed
 
-    def __lt__(self, pic: "ToofPic"):
-        return True if int(self.id[1:]) < int(pic.id[1:]) else False
-
+    def __lt__(self, other: "ToofPic"):
+        if self.rarity.value < other.rarity.value:
+            return True
+        if self.rarity.value > other.rarity.value:
+            return False
+        return True if self.id < other.id else False
+    
 
 class ToofPics(list[ToofPic]):
     """A list of ToofPics, with methods relating to them."""
 
-    def __getitem__(self, key):
-        """Allows subscripting to access pics of different rarities by
-        a string key. If item is not a string, uses default list
-        behavior.
-        """
+    @property
+    def commons(self) -> "ToofPics":
+        """ToofPics from the object that are of common rarity."""
 
+        return ToofPics(sorted([
+            pic for pic in self
+            if pic.rarity == ToofPicRarity.common]))
+
+    @property
+    def rares(self) -> "ToofPics":
+        """ToofPics from the object that are of rare rarity."""
+        
+        return ToofPics(sorted([
+            pic for pic in self
+            if pic.rarity == ToofPicRarity.rare]))
+
+    @property
+    def legendaries(self) -> "ToofPics":
+        """ToofPics from the object that are of legendary rarity."""
+        
+        return ToofPics(sorted([
+            pic for pic in self
+            if pic.rarity == ToofPicRarity.legendary]))
+    
+    @property
+    def unkowns(self) -> "ToofPics":
+        """ToofPics from the object that are of unknown rarity."""
+
+        return ToofPics(sorted([
+            pic for pic in self
+            if pic.rarity == ToofPicRarity.unknown]))
+
+    def __getitem__(self, key):
         if not isinstance(key, str):
             return super().__getitem__(key)
         
-        if key == "common":
-            return self.commons
-        if key == "rare":
-            return self.rares
-        if key == "legendary":
-            return self.legendaries
-        return ToofPics()
-
-    @property
-    def commons(self):
-        """A list of ToofPics that are common from the list."""
-
-        return ToofPics(sorted([pic for pic in self if pic.id[0] == 'C']))
-
-    @property
-    def rares(self):
-        """A list of ToofPics that are rare from the list."""
-       
-        return ToofPics(sorted([pic for pic in self if pic.id[0] == 'R']))
-
-    @property
-    def legendaries(self):
-        """A list of ToofPics that are legendary from the list."""
+        try:
+            return self.__getattribute__(key)
+        except AttributeError:
+            return ToofPics()
         
-        return ToofPics(sorted([pic for pic in self if pic.id[0] == 'L']))
-    
     def get_random(self) -> ToofPic | None:
         """Selects a random ToofPic from the list and returns it
         weighted by rarity. Returns None if the list is empty.
         """
 
-        num = random.randint(1, 256)
-        if num >= 1 and num <= 3:
+        rarities = ["commons", "rares", "legendaries"]
+        weights = [90, 9, 1]
+
+        while True:
+            rarity = random.choices(rarities, weights=weights, k=1)[0]
+            index = rarities.index(rarity)
+
             try:
-                return random.choice(self.legendaries)
+                return random.choice(self[rarity])
             except IndexError:
-                num = 4
-        if num >= 4 and num <= 25:
-            try:
-                return random.choice(self.rares)
-            except IndexError:
-                num = 26
-        if num >= 26 and num <= 256:
-            try:
-                return random.choice(self.commons)
-            except IndexError:
-                return None
+                try:
+                    rarities.pop(index)
+                    weights.pop(index)
+                except IndexError:
+                    return None
 
-    def summarize(self, all_pics: "ToofPics") -> discord.Embed:
-        """Return a Discord embed summarizing the list compared to
-        all_pics.
-        """
+    
+def collection_overview_embed(
+        all_pics: ToofPics, user_collection: ToofPics,
+        user: discord.User) -> discord.Embed:
+    """Return an embed summarizing the user's collection."""
 
-        description = f"You have found {len(self)} of {len(all_pics)} different pics.\n"
-        description += f" • {len(self.commons)} / {len(all_pics.commons)} commons 🐶\n"
-        description += f" • {len(self.rares)} / {len(all_pics.rares)} rares 💎\n"
-        description += f" • {len(self.legendaries)} / {len(all_pics.legendaries)} legendaries ⭐"
+    num_usr_c = len(user_collection["commons"])
+    num_usr_r = len(user_collection["rares"])
+    num_usr_l = len(user_collection["legendaries"])
+    usr_total = len(user_collection)
 
-        embed = discord.Embed(
-            color=discord.Color.greyple(),
-            description=description)
-        embed.set_author(name="Collection Overview:")
+    num_all_c = len(all_pics["commons"])
+    num_all_r = len(all_pics["rares"])
+    num_all_l = len(all_pics["legendaries"])
+    all_total = len(all_pics)
 
-        return embed
+    percent_c = num_usr_c / num_all_c * 100
+    percent_r = num_usr_r / num_all_r * 100
+    percent_l = num_usr_l / num_all_l * 100
+    percent_t = usr_total / all_total * 100
 
+    if num_usr_c == num_all_c:
+        description = f"\n 🐶 {num_usr_c} of {num_all_c} commons (💯)\n"
+    else:
+        description = f"\n 🐶 {num_usr_c} of {num_all_c} commons ({percent_c:.1f}%)\n"
+    if num_usr_r == num_all_r:
+        description += f" 💎 {num_usr_r} of {num_all_r} rares (💯)\n"
+    else:
+        description += f" 💎 {num_usr_r} of {num_all_r} rares ({percent_r:.1f}%)\n"
+    if num_usr_l == num_all_l:
+        description += f" ⭐ {num_usr_l} of {num_all_l} legendaries (💯)\n\n"
+    else:
+        description += f" ⭐ {num_usr_l} of {num_all_l} legendaries ({percent_l:.1f}%)\n\n"
+    if usr_total == all_total:
+        description += f"**TOTAL:** {usr_total} of {all_total} pics (💯)"
+        color = discord.Color.gold()
+    else:
+        description += f"**TOTAL:** {usr_total} of {all_total} pics ({percent_t:.1f}%)"
+        color = discord.Color.blurple()
+
+    embed = discord.Embed(color=color, description=description)
+    embed.set_author(
+        name=f"{user.name}'s Collection Overview:",
+        icon_url=user.avatar.url)
+
+    return embed
 
 class ToofPicCollectionSelect(discord.ui.Select):
     """Drop down menu to select the page for Toof pic collection."""
@@ -139,22 +196,22 @@ class ToofPicCollectionSelect(discord.ui.Select):
                 default=(page == "overview")),
             discord.SelectOption(
                 label="Common Pics",
-                value="common",
+                value="commons",
                 description="The ones you always see.",
                 emoji="🐶",
-                default=(page == "common")),
+                default=(page == "commons")),
             discord.SelectOption(
                 label="Rare Pics",
-                value="rare",
+                value="rares",
                 description="The ones you never see.",
                 emoji="💎",
-                default=(page == "rare")),
+                default=(page == "rares")),
             discord.SelectOption(
                 label="Legendary Pics",
-                value="legendary",
+                value="legendaries",
                 description="REAL???",
                 emoji="⭐",
-                default=(page == "legendary"))
+                default=(page == "legendaries"))
         ]
         
         super().__init__(options=options, *args, **kwargs)
@@ -170,22 +227,23 @@ class ToofPicCollectionSelect(discord.ui.Select):
 
         if page == "overview":
             content = None
-            pic = None
-            embed = self.user_collection.summarize(self.all_pics)
+            embed = collection_overview_embed(
+                self.all_pics,
+                self.user_collection,
+                interaction.user
+            )
         elif pics:
             content = None
-            pic = pics[0]
-            embed = pic.embed
+            embed = pics[0].embed
         else:
             content = f"u havent found any {page} pics!"
-            pic = None
             embed = None
                 
         await interaction.response.edit_message(
             content=content,
             embed=embed,
             view=ToofPicCollectionView(
-                self.all_pics, self.user_collection, page, pic))
+                self.all_pics, self.user_collection, page))
 
 
 class ChangeToofPicButton(discord.ui.Button):
@@ -193,74 +251,75 @@ class ChangeToofPicButton(discord.ui.Button):
     with either the previous() or next() class methods.
     """
 
-    all_pics: ToofPics
-    user_collection: ToofPics
-    page: str
-    next_pic: ToofPic
+    def __init__(
+            self, all_pics: ToofPics, user_collection: ToofPics,
+            page: str, curr_index: int, *args, **kwargs):
+        
+        pics = user_collection[page]
+        super().__init__(disabled=(len(pics) < 2), emoji="🔁", *args, **kwargs)
 
-    def __init__(self, *args, **kwargs):
-        return super().__init__(*args, **kwargs)
+        self.all_pics = all_pics
+        self.user_collection = user_collection
+        self.page = page
+        self.next_index = curr_index
 
     @classmethod
     def previous(
             cls, all_pics: ToofPics, user_collection: ToofPics,
-            page: str, curr_pic: ToofPic, *args, **kwargs):
+            page: str, curr_index: int, *args, **kwargs):
         """Returns a button that changes the current pic to the
         previous one.
         """
 
-        pics = user_collection[page]
+        button = cls(all_pics, user_collection, page,
+            curr_index, *args, **kwargs)
         
-        button = cls(disabled=(len(pics) < 2), emoji="⏪", *args, **kwargs)
+        button.emoji = "⏪"
 
+        pics = user_collection[page]
         if len(pics) < 2:
             return button
 
-        index = pics.index(curr_pic) - 1
-        if index == -1:
-            index = len(pics) - 1
-
-        button.all_pics = all_pics
-        button.user_collection = user_collection
-        button.page = page
-        button.next_pic = pics[index]
+        button.next_index = curr_index - 1
+        if button.next_index == -1:
+            button.next_index = len(pics) - 1
 
         return button
 
     @classmethod
     def next(
             cls, all_pics: ToofPics, user_collection: ToofPics,
-            page: str, curr_pic: ToofPic, *args, **kwargs):
+            page: str, curr_index: int, *args, **kwargs):
         """Returns a button that changes the current pic to the next
         one.
         """
 
-        pics = user_collection[page]
+        button = cls(all_pics, user_collection, page,
+            curr_index, *args, **kwargs)
         
-        button = cls(disabled=(len(pics) < 2), emoji="⏩", *args, **kwargs)
+        button.emoji = "⏩"
 
+        pics = user_collection[page]
         if len(pics) < 2:
             return button
 
-        index = pics.index(curr_pic) + 1
-        if index == len(pics):
-            index = 0
-
-        button.all_pics = all_pics
-        button.user_collection = user_collection
-        button.page = page
-        button.next_pic = pics[index]
+        button.next_index = curr_index + 1
+        if button.next_index == len(pics):
+            button.next_index = 0
 
         return button
 
     async def callback(self, interaction: discord.Interaction):
+        """Edits the embed to show the next pic."""
+
+        next_pic = self.user_collection[self.page][self.next_index]
         await interaction.response.edit_message(
-            embed=self.next_pic.embed,
+            embed=next_pic.embed,
             view=ToofPicCollectionView(
                 all_pics=self.all_pics,
                 user_collection=self.user_collection,
                 page=self.page,
-                pic=self.next_pic))
+                curr_index=self.next_index))
 
 
 class ToofPicShareButton(discord.ui.Button):
@@ -295,18 +354,26 @@ class ToofPicCollectionView(discord.ui.View):
 
     def __init__(
             self, all_pics: ToofPics, user_collection: ToofPics, 
-            page: str, pic: ToofPic = None, *args, **kwargs):
+            page: str, curr_index: int = 0, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.add_item(ToofPicCollectionSelect(
             all_pics, user_collection, page, row=0))
 
-        if page != "overview":
-            self.add_item(ChangeToofPicButton.previous(
-                all_pics, user_collection, page, pic, row=1))
-            self.add_item(ChangeToofPicButton.next(
-                all_pics, user_collection, page, pic, row=1))
-            self.add_item(ToofPicShareButton(pic, row=1))
+        if page == "overview":
+            return
+
+        self.add_item(ChangeToofPicButton.previous(
+            all_pics, user_collection, page, curr_index, row=1))
+        self.add_item(ChangeToofPicButton.next(
+            all_pics, user_collection, page, curr_index, row=1))
+
+        try:
+            pic = user_collection[page][curr_index]
+        except IndexError:
+            pic = None
+
+        self.add_item(ToofPicShareButton(pic, row=1))
 
 
 class ToofPicsCog(commands.Cog):
@@ -344,8 +411,9 @@ class ToofPicsCog(commands.Cog):
             await interaction.response.send_message(
                 content="somethig went wrong :/",
                 ephemeral=True)
-        else:
-            await interaction.response.send_message(embed=pic.embed)
+            return
+        
+        await interaction.response.send_message(embed=pic.embed)
 
         user_collection = await self.get_collection(interaction.user.id)
         if pic not in user_collection:
@@ -365,7 +433,8 @@ class ToofPicsCog(commands.Cog):
 
         if user_collection:
             await interaction.response.send_message(
-                embed=user_collection.summarize(all_pics),
+                embed=collection_overview_embed(
+                    all_pics, user_collection, interaction.user),
                 view=ToofPicCollectionView(
                     all_pics, user_collection, "overview"),
                 ephemeral=True)
@@ -397,7 +466,7 @@ class ToofPicsCog(commands.Cog):
 
         all_pics = await self.get_collection(0)
         id = f"{rarity.value}{(len(all_pics)+1):03d}"
-        toofpic = ToofPic(id, link)
+        pic = ToofPic(id, link)
 
         query = f"INSERT INTO pics VALUES (0, '{id}', '{link}')"
         await self.bot.db.execute(query)
@@ -405,7 +474,7 @@ class ToofPicsCog(commands.Cog):
 
         await interaction.response.send_message(
             content="pic added:",
-            embed=toofpic.embed,
+            embed=pic.embed,
             ephemeral=True)
         
 
