@@ -32,7 +32,7 @@ class ToofPic:
     link: str
     
     @property
-    def rarity(self) -> ToofPicRarity:
+    def rarity(self):
         if self.id.startswith("C"):
             return ToofPicRarity.common
         elif self.id.startswith("R"):
@@ -43,7 +43,7 @@ class ToofPic:
             return ToofPicRarity.unknown
         
     @property
-    def embed(self) -> discord.Embed:
+    def embed(self):
         if self.rarity == ToofPicRarity.common:
             embed = discord.Embed(color=discord.Color.green())
             embed.set_footer(text=f"🐶Common🐶 • ID: {self.id}")
@@ -72,7 +72,7 @@ class ToofPics(list[ToofPic]):
     """A list of ToofPics, with methods relating to them."""
 
     @property
-    def commons(self) -> "ToofPics":
+    def commons(self):
         """ToofPics from the object that are of common rarity."""
 
         return ToofPics(sorted([
@@ -80,7 +80,7 @@ class ToofPics(list[ToofPic]):
             if pic.rarity == ToofPicRarity.common]))
 
     @property
-    def rares(self) -> "ToofPics":
+    def rares(self):
         """ToofPics from the object that are of rare rarity."""
         
         return ToofPics(sorted([
@@ -88,7 +88,7 @@ class ToofPics(list[ToofPic]):
             if pic.rarity == ToofPicRarity.rare]))
 
     @property
-    def legendaries(self) -> "ToofPics":
+    def legendaries(self):
         """ToofPics from the object that are of legendary rarity."""
         
         return ToofPics(sorted([
@@ -96,7 +96,7 @@ class ToofPics(list[ToofPic]):
             if pic.rarity == ToofPicRarity.legendary]))
     
     @property
-    def unkowns(self) -> "ToofPics":
+    def unkowns(self):
         """ToofPics from the object that are of unknown rarity."""
 
         return ToofPics(sorted([
