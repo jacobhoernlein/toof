@@ -1,13 +1,12 @@
 """Gives the given user all the ToofPics."""
 
 import sqlite3
-import sys
 
 from pics import ToofPic, ToofPics
 
 
 if __name__ == "__main__":
-    user_id = int(sys.argv[1])
+    user_id = 978022589882568794
 
     conn = sqlite3.connect("toof.sqlite")
     cursor = conn.execute("SELECT * FROM pics WHERE user_id = 0")
@@ -18,7 +17,7 @@ if __name__ == "__main__":
     cursor.close()
 
     for pic in all_pics:
-        if pic not in user_collection:
+        if pic not in user_collection and pic.rarity.name == "rare":
             conn.execute(f"INSERT INTO pics VALUES ({user_id}, '{pic.id}', '{pic.link}')")
     conn.commit()
     conn.close()
