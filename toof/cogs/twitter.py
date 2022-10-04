@@ -10,15 +10,14 @@ import discord
 from discord.ext import commands
 from tweepy import Client as TPClient
 
-import toof
+from .. import base
 
 
-class TwitterCog(commands.Cog):
+class TwitterCog(base.Cog):
     """Cog that contains Twitter functionality."""
 
-    def __init__(self, bot: toof.ToofBot):
+    def __init__(self, bot: base.Bot):
         self.bot = bot
-
         self.tpclient = TPClient(
             consumer_key=os.getenv('TWEEPYAPITOKEN'),
             consumer_secret=os.getenv('TWEEPYAPISECRET'),
@@ -43,7 +42,3 @@ class TwitterCog(commands.Cog):
         url = f"https://twitter.com/ToofBot/status/{response.data['id']}"
         
         await msg.reply(url)
-
-    
-async def setup(bot: toof.ToofBot):
-    await bot.add_cog(TwitterCog(bot))

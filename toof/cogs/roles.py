@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands
 from emoji import is_emoji
 
-import toof
+from .. import base
 
 
 @dataclass
@@ -143,7 +143,7 @@ class RoleAddView(discord.ui.View):
 class RoleCreateModal(discord.ui.Modal):
     """Modal to be sent to moderators that creates a new role."""
 
-    def __init__(self, bot: toof.ToofBot, role_type: str, *args, **kwargs):
+    def __init__(self, bot: base.Bot, role_type: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.bot = bot
@@ -292,12 +292,9 @@ class RoleDeleteConfirmView(discord.ui.View):
             view=None)
 
 
-class RolesCog(commands.Cog):
+class RolesCog(base.Cog):
     """Cog containing commands relating to roles."""
-
-    def __init__(self, bot: toof.ToofBot):
-        self.bot = bot
-        
+ 
     async def get_role_dict(
             self,
             guild: discord.Guild) -> dict[str, list[ConfigRole]]:
@@ -383,7 +380,3 @@ class RolesCog(commands.Cog):
             view=RoleDeleteView(guild_roles_dict, type.name.lower()),
             ephemeral=True
         )
-
-    
-async def setup(bot: toof.ToofBot):
-    await bot.add_cog(RolesCog(bot))

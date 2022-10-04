@@ -8,9 +8,8 @@ from enum import Enum
 import random
 
 import discord
-from discord.ext import commands
 
-import toof
+from .. import base
 
 
 class ToofPicRarity(Enum):
@@ -159,21 +158,19 @@ def collection_embed(
 
         return description
 
-    description = "🐶 " + summarize("commons")
-    description += "💎 " + summarize("rares")
-    description += "⭐ " + summarize("legendaries")
-    description += "\n**TOTAL:** " + summarize("pics")
-    
-    if len(usr_pics) == len(all_pics):
-        color = discord.Color.gold()
-    else:
-        color = discord.Color.blurple()
-    
-    embed = discord.Embed(color=color, description=description)
+    embed = discord.Embed()
     embed.set_author(
         name=f"{user.name}'s Collection Overview:",
         icon_url=user.avatar.url)
 
+    embed.description = "🐶 " + summarize("commons")
+    embed.description += "💎 " + summarize("rares")
+    embed.description += "⭐ " + summarize("legendaries")
+    embed.description += "\n**TOTAL:** " + summarize("pics")
+    
+    if len(usr_pics) == len(all_pics):
+        embed.color = discord.Color.gold()
+    
     return embed
 
 
@@ -188,25 +185,25 @@ class ToofPicCollectionSelect(discord.ui.Select):
             discord.SelectOption(
                 label="Overview",
                 value="overview",
-                description="Shows an overview of your entire collection.",
+                description="Shows an overview of your entire ToofPic collection.",
                 emoji="🔎",
                 default=(page == "overview")),
             discord.SelectOption(
                 label="Common Pics",
                 value="commons",
-                description="The ones you always see.",
+                description="Normal, run-of-the-mill ToofPics. (He is such a good boy).",
                 emoji="🐶",
                 default=(page == "commons")),
             discord.SelectOption(
                 label="Rare Pics",
                 value="rares",
-                description="The ones you never see.",
+                description="ToofPics of a bit higher quality. They are blue flavored.",
                 emoji="💎",
                 default=(page == "rares")),
             discord.SelectOption(
                 label="Legendary Pics",
                 value="legendaries",
-                description="REAL???",
+                description="The rarest, most awe-inspiring ToofPics money can buy.",
                 emoji="⭐",
                 default=(page == "legendaries"))
         ]
@@ -341,14 +338,12 @@ class ToofPicCollectionView(discord.ui.View):
             all_pics, usr_pics, page, curr_index, row=1))
 
 
-class ToofPicsCog(commands.Cog):
+class ToofPicsCog(base.Cog):
     """Cog which contains commands to interact with the Toof Pics
     extension.
     """
 
-    def __init__(self, bot: toof.ToofBot):
-        self.bot = bot
-
+    async def cog_load(self):
         self.bot.tree.add_command(
             discord.app_commands.ContextMenu(
                 name="Check Collection",
@@ -466,6 +461,3 @@ class ToofPicsCog(commands.Cog):
             embed=pic.embed,
             ephemeral=True)
         
-
-async def setup(bot: toof.ToofBot):
-    await bot.add_cog(ToofPicsCog(bot))

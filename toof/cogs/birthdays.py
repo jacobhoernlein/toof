@@ -7,25 +7,22 @@ birthdays.
 import datetime
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import tasks
 
-import toof
+from .. import base
 
 
-class BirthdayCog(commands.Cog):
+class BirthdayCog(base.Cog):
     """Cog that contains a loop to watch birthdays and commands
     relating to them.
     """
-
-    def __init__(self, bot: toof.ToofBot):
-        self.bot = bot
-        
+ 
+    async def cog_load(self):
         self.bot.tree.add_command(
             discord.app_commands.ContextMenu(
                 name="Check Birthday",
                 callback=self.birthday_context_callback))
-
-    async def cog_load(self):
+        
         self.check_day.start()
 
     def cog_unload(self):
@@ -121,7 +118,3 @@ class BirthdayCog(commands.Cog):
 
         await interaction.response.send_message("updooted !", ephemeral=True)
           
-
-async def setup(bot: toof.ToofBot):
-    await bot.add_cog(BirthdayCog(bot))
-    

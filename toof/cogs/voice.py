@@ -7,26 +7,27 @@ import datetime
 import discord
 from discord.ext import commands
 
-import toof
+from .. import base
 
 
-class VoiceCog(commands.Cog):
+class VoiceCog(base.Cog):
     """Cog that watches for voice updates."""
 
-    def __init__(self, bot: toof.ToofBot):
+    def __init__(self, bot: base.Bot):
         self.bot = bot
         self.id_time_dict: dict[int, datetime.datetime] = {}
+
+    async def cog_load(self):
+        """Creates the dictionary when the cog is loaded with current
+        voice users.
+        """
 
         self.bot.tree.add_command(
             discord.app_commands.ContextMenu(
                 name="Check Voice Time",
                 callback=self.check_voice_callback))
 
-    async def cog_load(self):
-        """Creates the dictionary when the cog is loaded with current
-        voice users.
-        """
-        
+        self.id_time_dict = {}
         for guild in self.bot.guilds:
             for voice_channel in guild.voice_channels:
                 for member in voice_channel.members:
@@ -105,7 +106,3 @@ class VoiceCog(commands.Cog):
             content=string,
             ephemeral=True)
         
-    
-async def setup(bot: toof.ToofBot):
-    await bot.add_cog(VoiceCog(bot))
-    

@@ -8,15 +8,12 @@ from random import choice
 import discord
 from discord.ext import commands, tasks
 
-import toof
+from .. import base
 
 
-class MiscCog(commands.Cog):
+class MiscCog(base.Cog):
     """Cog that contains basic event handling"""
 
-    def __init__(self, bot: toof.ToofBot):
-        self.bot = bot
-        
     async def cog_load(self):
         self.change_status.start()
         self.check_day.start()
@@ -129,7 +126,3 @@ class MiscCog(commands.Cog):
         await interaction.response.send_message(
             f"woof! ({round(self.bot.latency * 1000)}ms)",
             ephemeral=True)
-
-    
-async def setup(bot: toof.ToofBot):
-    await bot.add_cog(MiscCog(bot))

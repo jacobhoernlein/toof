@@ -6,15 +6,14 @@ kick people for listening to Doja Cat (real).
 import discord
 from discord.ext import commands
 
-import toof
+from .. import base
 
 
 class ModmailModal(discord.ui.Modal):
     """Modal to be sent to users running the Modmail command"""
 
-    def __init__(self, bot: toof.ToofBot, *args, **kwargs):
+    def __init__(self, bot: base.Bot, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
         self.bot = bot
 
     subject = discord.ui.TextInput(
@@ -67,14 +66,11 @@ class ModmailModal(discord.ui.Modal):
                 ephemeral=True)
 
 
-class ModCog(commands.Cog):
+class ModCog(base.Cog):
     """Cog containing listeners for message editing/deleting
     as well as status updates.
     """
 
-    def __init__(self, bot: toof.ToofBot):
-        self.bot = bot
-      
     async def get_log_channel(
             self,
             guild: discord.Guild) -> discord.TextChannel | None:
@@ -179,8 +175,3 @@ class ModCog(commands.Cog):
         
         await interaction.response.send_modal(
             ModmailModal(self.bot, title="New Modmail"))
-
-
-async def setup(bot: toof.ToofBot):
-    await bot.add_cog(ModCog(bot))
-    
