@@ -5,4 +5,3 @@ __author__ = "jakemrh"
 __version__ = "2.7.0"
 
 from .bot import ToofBot
-from . import cogs

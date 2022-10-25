@@ -8,11 +8,14 @@ from random import choice
 import discord
 from discord.ext import commands, tasks
 
-from .. import base
+import toof
 
 
-class MiscCog(base.Cog):
+class MiscCog(commands.Cog):
     """Cog that contains basic event handling"""
+
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
 
     async def cog_load(self):
         self.change_status.start()
@@ -46,12 +49,13 @@ class MiscCog(base.Cog):
 
         await self.bot.change_presence(activity=choice(activities))
 
-    @tasks.loop(hours=24)
+    @tasks.loop(hours=12)
     async def check_day(self):
         """Sends a good morning happy friday gif at certain time"""
         
+        # Only let the bot send the message on Fridays in the AM
         now = datetime.datetime.now()
-        if now.weekday() != 4:
+        if now.weekday() != 4 or now.hour >= 12:
             return
 
         query = "SELECT welcome_channel_id FROM guilds"
@@ -126,3 +130,8 @@ class MiscCog(base.Cog):
         await interaction.response.send_message(
             f"woof! ({round(self.bot.latency * 1000)}ms)",
             ephemeral=True)
+
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(MiscCog(bot))
+    

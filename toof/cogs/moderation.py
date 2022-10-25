@@ -6,13 +6,13 @@ kick people for listening to Doja Cat (real).
 import discord
 from discord.ext import commands
 
-from .. import base
+import toof
 
 
 class ModmailModal(discord.ui.Modal):
     """Modal to be sent to users running the Modmail command"""
 
-    def __init__(self, bot: base.Bot, *args, **kwargs):
+    def __init__(self, bot: toof.ToofBot, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bot = bot
 
@@ -44,14 +44,15 @@ class ModmailModal(discord.ui.Modal):
         async with self.bot.db.execute(query) as cursor:
             row = await cursor.fetchone()
         if row is None:
-            return
-
-        log_channel = discord.utils.find(
-            lambda c: c.id == row[0],
-            interaction.guild.channels)
-        mod_role = discord.utils.find(
-            lambda r: r.id == row[1],
-            interaction.guild.roles)
+            log_channel = None
+            mod_role = None
+        else:
+            log_channel = discord.utils.find(
+                lambda c: c.id == row[0],
+                interaction.guild.channels)
+            mod_role = discord.utils.find(
+                lambda r: r.id == row[1],
+                interaction.guild.roles)
 
         if log_channel is None or mod_role is None:
             await interaction.response.send_message(
@@ -66,10 +67,13 @@ class ModmailModal(discord.ui.Modal):
                 ephemeral=True)
 
 
-class ModCog(base.Cog):
+class ModCog(commands.Cog):
     """Cog containing listeners for message editing/deleting
     as well as status updates.
     """
+
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
 
     async def get_log_channel(
             self,
@@ -175,3 +179,8 @@ class ModCog(base.Cog):
         
         await interaction.response.send_modal(
             ModmailModal(self.bot, title="New Modmail"))
+
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(ModCog(bot))
+    

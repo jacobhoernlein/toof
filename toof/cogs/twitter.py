@@ -8,17 +8,17 @@ from random import randint
 
 import discord
 from discord.ext import commands
-from tweepy import Client as TPClient
+import tweepy
 
-from .. import base
+import toof
 
 
-class TwitterCog(base.Cog):
+class TwitterCog(commands.Cog):
     """Cog that contains Twitter functionality."""
 
-    def __init__(self, bot: base.Bot):
+    def __init__(self, bot: toof.ToofBot):
         self.bot = bot
-        self.tpclient = TPClient(
+        self.tp = tweepy.Client(
             consumer_key=os.getenv('TWEEPYAPITOKEN'),
             consumer_secret=os.getenv('TWEEPYAPISECRET'),
             access_token=os.getenv('TWEEPYACCESS'),
@@ -35,10 +35,17 @@ class TwitterCog(base.Cog):
             or not msg.content):
             return
         
-        author_name = msg.author.display_name
-        message = msg.content[0:(234 - (len(author_name)))]
-        tweet_content = f"\"{message}\" - {author_name}"
-        response = self.tpclient.create_tweet(text=tweet_content)
+        name = msg.author.display_name
+        content = msg.content
+        if len(content) > (234 - len(name)):
+            content = f"{content[0:(231 - len(name))]}..."
+        
+        response = self.tp.create_tweet(text=f'"{content}" - {name}')        
         url = f"https://twitter.com/ToofBot/status/{response.data['id']}"
         
         await msg.reply(url)
+
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(TwitterCog(bot))
+    

@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands
 from emoji import is_emoji
 
-from .. import base
+import toof
 
 
 @dataclass
@@ -19,8 +19,39 @@ class ConfigRole:
     """
     
     role: discord.Role
-    description: str
     emoji: discord.PartialEmoji
+    description: str
+    type: str
+
+
+class RoleMenu(list[ConfigRole]):
+
+    def __init__(self, list: list[ConfigRole] = None):
+        super().__init__(list)
+        self.page = "pings"
+
+    @classmethod
+    async def from_db(cls, bot: toof.ToofBot, guild: discord.Guild):
+        """Queries the database to build a role menu for the given
+        guild.
+        """
+
+        query = f'SELECT * FROM roles WHERE guild_id = {guild.id}'
+        async with bot.db.execute(query) as cursor:
+            list = [
+                ConfigRole(
+                    role=discord.utils.find(
+                        lambda r: r.id == row[1], guild.roles),
+                    emoji=discord.PartialEmoji.from_str(row[2]),
+                    description=row[3],
+                    type=row[4])
+                async for row in cursor]
+        
+        return cls(list)
+
+    @property
+    def current(self) -> list[ConfigRole]:
+        return [conf_role for conf_role in self if conf_role.type == self.page]
 
 
 class RoleAddSelect(discord.ui.Select):
@@ -30,17 +61,16 @@ class RoleAddSelect(discord.ui.Select):
 
     def __init__(
             self, interaction: discord.Interaction,
-            role_dict: dict[str, list[ConfigRole]],
-            role_type: str, *args, **kwargs):
+            role_menu: RoleMenu, *args, **kwargs):
     
         options = [
             discord.SelectOption(
-                default=(config_role.role in interaction.user.roles),
-                label=config_role.role.name,
-                value=str(config_role.role.id),
-                description=config_role.description,
-                emoji=config_role.emoji)
-            for config_role in role_dict[role_type]]
+                default=(conf_role.role in interaction.user.roles),
+                label=conf_role.role.name,
+                value=str(conf_role.role.id),
+                description=conf_role.description,
+                emoji=conf_role.emoji)
+            for conf_role in role_menu.current]
         
         super().__init__(
             placeholder="Select Some Roles!",
@@ -49,19 +79,17 @@ class RoleAddSelect(discord.ui.Select):
             options=options,
             *args, **kwargs)
 
-        # Creates a list of roles relating to the current page.
-        self.role_list = [conf_role.role for conf_role in role_dict[role_type]]
+        self.role_menu = role_menu
 
     async def callback(self, interaction: discord.Interaction):
         """Removes roles that the user didn't select and adds the roles
         that they did select from the menu.
         """
-
-        for role in self.role_list:
-            if str(role.id) not in self.values:
-                await interaction.user.remove_roles(role)
+        for role in [cr.role for cr in self.role_menu.current]:
             if str(role.id) in self.values:
                 await interaction.user.add_roles(role)
+            else:
+                await interaction.user.remove_roles(role)
         await interaction.response.defer()
 
 
@@ -70,19 +98,15 @@ class RoleAddButton(discord.ui.Button):
     page.
     """
 
-    def __init__(
-            self, role_dict: dict[str, list[ConfigRole]],
-            role_type: str,*args, **kwargs):
+    def __init__(self, role_menu: RoleMenu, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.role_dict = role_dict
-        self.role_type = role_type
+        self.role_menu = role_menu
 
     async def callback(self, interaction: discord.Interaction):
         """Changes the page of the menu to that of the button."""
-
+        self.role_menu.page = self.label.lower()
         await interaction.response.edit_message(
-            view=RoleAddView(interaction, self.role_dict, self.role_type))
+            view=RoleAddView(interaction, self.role_menu))
 
 
 class RoleAddView(discord.ui.View):
@@ -92,58 +116,40 @@ class RoleAddView(discord.ui.View):
 
     def __init__(
             self, interaction: discord.Interaction,
-            role_dict: dict[str, list[ConfigRole]],
-            role_type: str, *args, **kwargs):
+            role_menu: RoleMenu, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        if role_type == "pings":
-            pings_style = discord.ButtonStyle.primary
-            gaming_style = discord.ButtonStyle.secondary
-            pronouns_style = discord.ButtonStyle.secondary
-        
-        if role_type == "gaming":
-            pings_style = discord.ButtonStyle.secondary
-            gaming_style = discord.ButtonStyle.primary
-            pronouns_style = discord.ButtonStyle.secondary
-
-        if role_type == "pronouns":
-            pings_style = discord.ButtonStyle.secondary
-            gaming_style = discord.ButtonStyle.secondary
-            pronouns_style = discord.ButtonStyle.primary
-        
         self.add_item(RoleAddButton(
-            role_dict=role_dict,
-            role_type="pings",
-            style=pings_style,
+            role_menu=role_menu,
+            style=(discord.ButtonStyle.primary if role_menu.page == "pings"
+                else discord.ButtonStyle.secondary),
             label="Pings",
             emoji="🔔",
             row=0))
         self.add_item(RoleAddButton(
-            role_dict=role_dict,
-            role_type="gaming",
-            style=gaming_style,
+            role_menu=role_menu,
+            style=(discord.ButtonStyle.primary if role_menu.page == "gaming"
+                else discord.ButtonStyle.secondary),
             label="Gaming",
             emoji="🎮",
             row=0))
         self.add_item(RoleAddButton(
-            role_dict=role_dict,
-            role_type="pronouns",
-            style=pronouns_style,
+            role_menu=role_menu,
+            style=(discord.ButtonStyle.primary if role_menu.page == "pronouns"
+                else discord.ButtonStyle.secondary),
             label="Pronouns",
             emoji="😊",
             row=0
         ))
 
-        if role_dict[role_type]:
-            self.add_item(RoleAddSelect(
-                interaction, role_dict, role_type,
-                row=1))
+        if role_menu.current:
+            self.add_item(RoleAddSelect(interaction, role_menu, row=1))
 
 
 class RoleCreateModal(discord.ui.Modal):
     """Modal to be sent to moderators that creates a new role."""
 
-    def __init__(self, bot: base.Bot, role_type: str, *args, **kwargs):
+    def __init__(self, bot: toof.ToofBot, role_type: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.bot = bot
@@ -201,7 +207,7 @@ class RoleCreateModal(discord.ui.Modal):
             mentionable=(self.role_type == "gaming"))
 
         # Updates the database with the role's info.
-        query = f"INSERT INTO roles VALUES ({interaction.guild_id}, {role.id}, {self.emoji.value}, {self.description.value}, {self.role_type})"
+        query = f"INSERT INTO roles VALUES ({interaction.guild_id}, {role.id}, '{self.emoji.value}', '{self.description.value}', '{self.role_type}')"
         await self.bot.db.execute(query)
         await self.bot.db.commit()
 
@@ -213,9 +219,7 @@ class RoleCreateModal(discord.ui.Modal):
 class RoleDeleteSelect(discord.ui.Select):
     """discord.ui.Select that lists roles for moderators to delete."""
 
-    def __init__(
-            self, role_dict: dict[str, list[ConfigRole]],
-            role_type: str, *args, **kwargs):
+    def __init__(self, role_menu: RoleMenu, *args, **kwargs):
         
         options = [
             discord.SelectOption(
@@ -223,14 +227,14 @@ class RoleDeleteSelect(discord.ui.Select):
                 value=str(config_role.role.id),
                 description=config_role.description,
                 emoji="❌")
-            for config_role in role_dict[role_type]]
+            for config_role in role_menu.current]
         
         super().__init__(
             placeholder="Choose a role to delete.", min_values=0,
             max_values=1, options=options, row=1, *args, **kwargs)
 
         # Creates a list of roles relating to the given type
-        self.role_list = [conf_role.role for conf_role in role_dict[role_type]]
+        self.role_list = [conf_role.role for conf_role in role_menu.current]
 
     async def callback(self, interaction: discord.Interaction):
         """Asks the user to confirm if they wish to delete the role."""
@@ -246,12 +250,10 @@ class RoleDeleteSelect(discord.ui.Select):
 class RoleDeleteView(discord.ui.View):
     """View that contains the RoleDeleteSelect menu."""
 
-    def __init__(
-            self, role_dict: dict[str, list[ConfigRole]],
-            role_type: str, *args, **kwargs):
+    def __init__(self, role_menu: RoleMenu, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.add_item(RoleDeleteSelect(role_dict, role_type))
+        self.add_item(RoleDeleteSelect(role_menu))
 
 
 class RoleDeleteConfirmView(discord.ui.View):
@@ -292,32 +294,11 @@ class RoleDeleteConfirmView(discord.ui.View):
             view=None)
 
 
-class RolesCog(base.Cog):
+class RolesCog(commands.Cog):
     """Cog containing commands relating to roles."""
  
-    async def get_role_dict(
-            self,
-            guild: discord.Guild) -> dict[str, list[ConfigRole]]:
-        """Creates the role_dict for the guild by querying the
-        database.
-        """
-        
-        guild_roles_dict = {"pings": [], "gaming": [], "pronouns": []}
-        
-        query = f'SELECT * FROM roles WHERE guild_id = {guild.id}'
-        async with self.bot.db.execute(query) as cursor:
-            async for row in cursor:
-
-                role: discord.Role = discord.utils.find(
-                    lambda r: r.id == row[1],
-                    guild.roles)
-                emoji = discord.PartialEmoji.from_str(row[2])
-                description: str = row[3]
-
-                guild_roles_dict[row[4]].append(
-                    ConfigRole(role, description, emoji))
-
-        return guild_roles_dict
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
@@ -335,9 +316,9 @@ class RolesCog(base.Cog):
     async def roles_command(self, interaction: discord.Interaction):
         """Sends the user the roles add menu."""
         
-        guild_roles_dict = await self.get_role_dict(interaction.guild)
+        guild_role_menu = await RoleMenu.from_db(self.bot, interaction.guild)
         await interaction.response.send_message(
-            view=RoleAddView(interaction, guild_roles_dict, 'pings'),
+            view=RoleAddView(interaction, guild_role_menu),
             ephemeral=True)
 
     @discord.app_commands.command(
@@ -358,7 +339,7 @@ class RolesCog(base.Cog):
         
         await interaction.response.send_modal(
             RoleCreateModal(
-                self.bot, type.value.lower(),
+                self.bot, type.name.lower(),
                 title=f"Create a new {type.name} role:"))
     
     @discord.app_commands.command(
@@ -375,8 +356,14 @@ class RolesCog(base.Cog):
             type: discord.app_commands.Choice[int]):
         """Sends the user a menu to select a role to delete."""
         
-        guild_roles_dict = await self.get_role_dict(interaction.guild)
+        guild_role_menu = await RoleMenu.from_db(self.bot, interaction.guild)
+        guild_role_menu.page = type.name.lower()
+        
         await interaction.response.send_message(
-            view=RoleDeleteView(guild_roles_dict, type.name.lower()),
+            view=RoleDeleteView(guild_role_menu),
             ephemeral=True
         )
+
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(RolesCog(bot))

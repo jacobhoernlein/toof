@@ -7,13 +7,13 @@ import datetime
 import discord
 from discord.ext import commands
 
-from .. import base
+import toof
 
 
-class VoiceCog(base.Cog):
+class VoiceCog(commands.Cog):
     """Cog that watches for voice updates."""
 
-    def __init__(self, bot: base.Bot):
+    def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         self.id_time_dict: dict[int, datetime.datetime] = {}
 
@@ -106,3 +106,7 @@ class VoiceCog(base.Cog):
             content=string,
             ephemeral=True)
         
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(VoiceCog(bot))
+    

@@ -7,15 +7,18 @@ birthdays.
 import datetime
 
 import discord
-from discord.ext import tasks
+from discord.ext import commands, tasks
 
-from .. import base
+import toof
 
 
-class BirthdayCog(base.Cog):
+class BirthdayCog(commands.Cog):
     """Cog that contains a loop to watch birthdays and commands
     relating to them.
     """
+
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
  
     async def cog_load(self):
         self.bot.tree.add_command(
@@ -28,40 +31,44 @@ class BirthdayCog(base.Cog):
     def cog_unload(self):
         self.check_day.stop()
 
-    @tasks.loop(hours=24)
+    @tasks.loop(hours=12)
     async def check_day(self):
         """Sends a birthday message on birthdays"""
-        
+
+        # Only let the bot send bday messages in the AM
+        now = datetime.datetime.now()
+        if now.hour >= 12:
+            return
+
         # Creates a list of users whose birthdays are today
-        now = datetime.datetime.now().strftime("%m/%d")
+        now = now.strftime("%m/%d")
         query = f"SELECT user_id FROM birthdays WHERE birthday LIKE '{now}%'"
         async with self.bot.db.execute(query) as cursor:
             bday_users = [self.bot.get_user(row[0]) async for row in cursor]
 
-        # Loops over every welcome channel and sends a message
-        # to every birthday boy in that server
+        # Creates a dictionary keying a channel to a list of birthday
+        # users in that channel's guild
         query = "SELECT welcome_channel_id FROM guilds"
         async with self.bot.db.execute(query) as cursor:
-            async for row in cursor:
-                
-                welcome_channel = self.bot.get_channel(row[0])
-                if welcome_channel is None:
-                    continue
+            welcome_channels = {
+                self.bot.get_channel(row[0]): [
+                    member for member in bday_users 
+                    if member in self.bot.get_channel(row[0]).members
+                ] 
+                async for row in cursor
+            }
 
-                # Creates a list of users that have a birthday 
-                # and are in the current guild
-                bday_users_in_guild = [
-                    user for user in bday_users
-                    if user in welcome_channel.guild.members]
-                if not bday_users_in_guild:
-                    continue
+        # Sends a message to each channel with birthday users
+        for channel, members in welcome_channels.items():
+            if not members:
+                continue
 
-                content = ""
-                for user in bday_users_in_guild:
-                    content += f"{user.mention} "
-                content += "https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
+            content = ""
+            for member in members:
+                content += f"{member.mention} "
+            content += "https://tenor.com/view/holiday-classics-elf-christmas-excited-happy-gif-15741376"
 
-                await welcome_channel.send(content)
+            await channel.send(content)
 
     async def birthday_context_callback(
             self, interaction: discord.Interaction, 
@@ -117,4 +124,8 @@ class BirthdayCog(base.Cog):
         await self.bot.db.commit()
 
         await interaction.response.send_message("updooted !", ephemeral=True)
+       
           
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(BirthdayCog(bot))
+    

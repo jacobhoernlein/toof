@@ -4,12 +4,16 @@ added to the quoteboard channel.
 """
 
 import discord
+from discord.ext import commands
 
-from .. import base
+import toof
 
 
-class QuotesCog(base.Cog):
+class QuotesCog(commands.Cog):
     """Cog containing a quote context menu and command."""
+
+    def __init__(self, bot: toof.ToofBot):
+        self.bot = bot
 
     async def cog_load(self):
         self.bot.tree.add_command(
@@ -26,9 +30,7 @@ class QuotesCog(base.Cog):
         async with self.bot.db.execute(query) as cursor:
             row = await cursor.fetchone()
 
-        return None if row is None else discord.utils.find(
-            lambda c: c.id == row[0],
-            guild.channels)
+        return None if row is None else self.bot.get_channel(row[0])
 
     @discord.app_commands.guild_only()
     async def quote_context_callback(
@@ -107,3 +109,8 @@ class QuotesCog(base.Cog):
             await interaction.response.send_message(
                 content="quote sent 😎",
                 ephemeral=True)
+
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(QuotesCog(bot))
+    

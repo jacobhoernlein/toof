@@ -6,13 +6,13 @@ of the server.
 import discord
 from discord.ext import commands
 
-from ..base import Bot
+import toof
 
 
 class WelcomeCog(commands.Cog):
     """Cog that contains listeners for users joining the server."""
 
-    def __init__(self, bot: Bot):
+    def __init__(self, bot: toof.ToofBot):
         self.bot = bot
         self.thread_member_dict: dict[discord.Thread, discord.Member] = {}
 
@@ -31,7 +31,7 @@ class WelcomeCog(commands.Cog):
             mod_role = discord.utils.find(
                 lambda r: r.id == row[1],
                 member.guild.roles)
-        
+
         if welcome_channel is None or mod_role is None:
             return
 
@@ -102,3 +102,8 @@ class WelcomeCog(commands.Cog):
         await member.kick()
         await thread.edit(archived=True, locked=True)
         del self.thread_member_dict[thread]
+
+
+async def setup(bot: toof.ToofBot):
+    await bot.add_cog(WelcomeCog(bot))
+    

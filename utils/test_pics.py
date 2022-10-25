@@ -2,29 +2,27 @@
 
 from time import perf_counter
 
-from toof.cogs.pics import ToofPic, ToofPics
+from toof.cogs.pics import ToofPic, ToofPics, ToofPicRarity
 
 
 if __name__ == "__main__":
     
     all_pics = ToofPics([
-        ToofPic("L001", "link"),
-        # ToofPic("R002", "link"),
-        # ToofPic("R003", "link"),
-        ToofPic("C004", "link"),
-        ToofPic("C005", "link"),
-        ToofPic("C006", "link"),
-        ToofPic("C007", "link")
+        ToofPic("L001", "name", "link", "date"),
+        ToofPic("R002", "name", "link", "date"),
+        ToofPic("R003", "name", "link", "date"),
+        ToofPic("C004", "name", "link", "date"),
+        ToofPic("C005", "name", "link", "date"),
     ])
     
     start = perf_counter()
 
-    user_collection = ToofPics()
+    user_pics = ToofPics()
     for i in range(10000):
-        user_collection.append(all_pics.get_random())
+        user_pics.append(all_pics.get_random())
 
     end = perf_counter()
     print(end - start)
 
-    for rarity in ["commons", "rares", "legendaries"]:
-        print(f"{rarity}: {len(user_collection[rarity])}")
+    for rarity in ["common", "rare", "legendary"]:
+        print(f"{rarity}: {len(user_pics[rarity])}")

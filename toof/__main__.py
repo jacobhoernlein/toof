@@ -13,9 +13,6 @@ random.seed(time())
 from . import ToofBot
 
 
-os.system("clear")
-
 bot = ToofBot(sys.argv[1])
-
 bot.run(os.getenv("BOTTOKEN"))
 asyncio.run(bot.db.close())
