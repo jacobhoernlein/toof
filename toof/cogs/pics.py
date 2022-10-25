@@ -16,46 +16,60 @@ import toof
 class ToofPicRarity:
     """Class representing different rarities."""
 
-    def __init__(self, name: str, value: int, weight: float, emoji: str, description: str):
+    def __init__(
+            self, name: str, value: int, weight: float,
+            emoji: discord.PartialEmoji, color: discord.Color,
+            description: str):
         self.name = name
         self.value = value
         self.weight = weight
         self.emoji = emoji
+        self.color = color
         self.description = description
         
     @classmethod
     @property
     def overview(cls):
         return cls(
-            name="overview", value=0, weight=0, emoji="🔎",
+            name="overview", value=0, weight=0,
+            emoji=discord.PartialEmoji.from_str("🔎"),
+            color=discord.Color.blurple(),
             description="Shows an overview of your entire ToofPic collection.")
 
     @classmethod
     @property
     def common(cls):
         return cls(
-            name="common", value=1, weight=1, emoji="🐶",
+            name="common", value=1, weight=1,
+            emoji=discord.PartialEmoji.from_str("🐶"),
+            color=discord.Color.green(),
             description="Normal, run-of-the-mill ToofPics. (He is such a good boy).")
 
     @classmethod
     @property
     def rare(cls):
         return cls(
-            name="rare", value=2, weight=0.1, emoji="💎",
+            name="rare", value=2, weight=0.1,
+            emoji=discord.PartialEmoji.from_str("💎"),
+            color=discord.Color.blue(),
             description="ToofPics of a bit higher quality. They are blue flavored.")
 
     @classmethod
     @property
     def legendary(cls):
         return cls(
-            name="legendary", value=3, weight=0.01, emoji="⭐",
+            name="legendary", value=3, weight=0.01,
+            emoji=discord.PartialEmoji.from_str("⭐"),
+            color=discord.Color.gold(),
             description="The rarest, most awe-inspiring ToofPics money can buy.")
 
     @classmethod
     @property
     def unknown(cls):
         return cls(
-            name="unknown", value=100, weight=0, emoji="❓",
+            name="unknown", value=100, weight=0,
+            emoji=discord.PartialEmoji.from_str("❓"),
+            color=discord.Color.blurple(),
             description="IDK wut these r.")
 
     @classmethod
@@ -65,14 +79,14 @@ class ToofPicRarity:
 
     @classmethod
     def get(cls, page: str):
-        match page.lower():
-            case "overview":
+        match page[0].upper():
+            case "O":
                 return cls.overview
-            case "common" | "commons":
+            case "C":
                 return cls.common
-            case "rare" | "rares":
+            case "R":
                 return cls.rare
-            case "legendary" | "legendaries":
+            case "L":
                 return cls.legendary
             case _:
                 return cls.unknown
@@ -80,13 +94,12 @@ class ToofPicRarity:
     def __eq__(self, other):
         if isinstance(other, ToofPicRarity):
             return self.value == other.value
-        match other:
-            case str(other):
-                return self.name == other or self.emoji == other
-            case int(other):
-                return self.value == other
-            case _:
-                raise TypeError(f"Equality not supported between ToofPicRarity and {other.__class__}")
+        elif isinstance(other, str):
+            return self.name == other
+        elif isinstance(other, int):
+            return self.value == other
+        else:
+            raise TypeError(f"Equality not supported between ToofPicRarity and {other.__class__}")
 
     def __lt__(self, other):
         if isinstance(other, ToofPicRarity):
@@ -115,39 +128,21 @@ class ToofPic:
     date: str
   
     @property
-    def datetime(self) -> datetime:
+    def dt(self) -> datetime:
         return datetime.strptime(self.date, "%H:%M %m/%d/%Y")
+
+    @dt.setter
+    def dt(self, new_dt: datetime):
+        self.date = new_dt.strftime("%H:%M %m/%d/%Y")
 
     @property
     def rarity(self) -> ToofPicRarity:
-        match self.id[0]:
-            case "C":
-                return ToofPicRarity.common
-            case "R":
-                return ToofPicRarity.rare
-            case "L":
-                return ToofPicRarity.legendary
-            case _:
-                return ToofPicRarity.unknown
-
+        return ToofPicRarity.get(self.id)
+        
     @property
     def embed(self) -> discord.Embed:
-        match self.rarity:
-            case ToofPicRarity.common:
-                color = discord.Color.green()
-                emoji = "🐶"
-            case ToofPicRarity.rare:
-                color = discord.Color.blue()
-                emoji = "💎"
-            case ToofPicRarity.legendary:
-                color = discord.Color.gold()
-                emoji = "⭐"
-            case ToofPicRarity.unknown:
-                color = discord.Color.blurple()
-                emoji = "❓"
-
-        embed = discord.Embed(color=color)
-        embed.set_author(name=f'{emoji} "{self.name}" • {self.id}')
+        embed = discord.Embed(color=self.rarity.color)
+        embed.set_author(name=f'{self.rarity.emoji} "{self.name}" • {self.id}')
         embed.set_image(url=self.link)
         return embed
 
@@ -196,8 +191,7 @@ class ToofPics(list[ToofPic]):
             rarity = random.choices(
                 population=rarities,
                 weights=[rarity.weight for rarity in rarities], 
-                k=1
-            )[0]
+                k=1)[0]
             
             try:
                 return random.choice(self[rarity])
@@ -249,14 +243,14 @@ class Collection:
     @property
     def cur_content(self):
         """The current content for the menu."""
-        if self.page == "overview" or self.cur_pics:
+        if self.page == ToofPicRarity.overview or self.cur_pics:
             return None
         return f"You don't have any {self.page} ToofPics!"
         
     @property
     def cur_embed(self):
         """The current embed of the menu."""
-        if self.page == "overview":
+        if self.page == ToofPicRarity.overview:
             return self.__overview
         if self.cur_pics:
             return self.cur_pics[self.index].embed
@@ -297,24 +291,6 @@ class Collection:
         user has no pictures.
         """
         
-        def summarize(rarity: ToofPicRarity) -> str:
-            if rarity == "overview":
-                num_usr = len(usr_pics)
-                num_all = len(all_pics)
-                description = f"\n**TOTAL:** {num_usr} of {num_all} pics "
-            else:
-                num_usr = len(usr_pics[rarity])
-                num_all = len(all_pics[rarity])
-                description = f"{num_usr} of {num_all} {rarity} pics "
-            percent = num_usr / num_all * 100
-
-            if num_usr == num_all:
-                description += f"(💯)\n"
-            else:
-                description += f"({percent:.1f}%)\n"
-
-            return description
-
         embed = discord.Embed(
             color=(
                 discord.Color.gold() if len(usr_pics) == len(all_pics)
@@ -326,7 +302,20 @@ class Collection:
                 icon_url=user.avatar.url)
 
         for rarity in ToofPicRarity.list() + [ToofPicRarity.overview]:
-            embed.description += f"{rarity.emoji} {summarize(rarity)}"
+            if rarity == ToofPicRarity.overview:
+                num_usr = len(usr_pics)
+                num_all = len(all_pics)
+                embed.description += f"\n**TOTAL:** {num_usr} of {num_all} pics "
+            else:
+                num_usr = len(usr_pics[rarity])
+                num_all = len(all_pics[rarity])
+                embed.description += f"{rarity.emoji} {num_usr} of {num_all} {rarity} pics "
+            percent = num_usr / num_all * 100
+
+            if num_usr == num_all:
+                embed.description += f"(💯)\n"
+            else:
+                embed.description += f"({percent:.1f}%)\n"
 
         return embed
                 
@@ -361,8 +350,8 @@ class CollectionSelect(discord.ui.Select):
 
 
 class ChangePicButton(discord.ui.Button):
-    """Changes the current Toof Pic on the message. Must be constructed
-    with either the previous() or next() class methods.
+    """Changes the current Toof Pic on the message. Functionality
+    is based on the emoji given when initializing.
     """
 
     def __init__(self, collection: Collection, *args, **kwargs):
@@ -394,7 +383,7 @@ class ShareButton(discord.ui.Button):
         super().__init__(
             style=discord.ButtonStyle.primary, label="Share",
             disabled=(
-                collection.page != "overview"
+                collection.page != ToofPicRarity.overview
                 and not collection.cur_pics),
             emoji="⤴️", *args, **kwargs)
         self.collection = collection
@@ -439,10 +428,7 @@ class PicCommandGroup(discord.app_commands.Group):
 
         all_pics = await ToofPics.from_db(self.bot)
         pic = all_pics.get_random()
-        
-        pic.date = datetime.now().strftime("%H:%M %m/%d/%Y")
-
-        await interaction.response.send_message(embed=pic.embed)
+        pic.dt = interaction.created_at
 
         collection = await Collection.from_db(
             self.bot, interaction.user, all_pics)
@@ -454,6 +440,8 @@ class PicCommandGroup(discord.app_commands.Group):
                     '{pic.link}', '{pic.date}')"""
             await self.bot.db.execute(query)
             await self.bot.db.commit()
+
+        await interaction.response.send_message(embed=pic.embed)
 
     @discord.app_commands.command(
         name="steal",
@@ -471,6 +459,10 @@ class PicCommandGroup(discord.app_commands.Group):
             await interaction.response.send_message(
                 "you failed.", ephemeral=True)
             return
+        if target == interaction.user:
+            await interaction.response.send_message(
+                "u cant steal from urself!", ephemeral=True)
+            return
 
         all_pics = await ToofPics.from_db(self.bot)
         user_collection = await Collection.from_db(
@@ -478,35 +470,33 @@ class PicCommandGroup(discord.app_commands.Group):
         target_collection = await Collection.from_db(
             self.bot, target, all_pics)
         
-        try:
-            pic = target_collection.pics.get_random()
-        except IndexError:
+        if not target_collection.pics:
             await interaction.response.send_message(
                 f"{target.mention} doesn't have any pics to steal !", ephemeral=True)
             return
 
-        if pic not in user_collection.pics:
-            
-            date = datetime.now().strftime("%H:%M %m/%d/%Y")
+        pic = target_collection.pics.get_random()
+        
+        if pic in user_collection.pics:
+            content = f"u tried to steal a {pic.id} from {target.mention}, but u already hav 1!"
+            ephemeral = True
+        else:
+            content = f"{interaction.user.mention} stole a {pic.id} from {target.mention} !"
+            ephemeral = False
+
             query = f"""
                 UPDATE pics
                 SET
                     user_id = {interaction.user.id},
-                    date = '{date}'
+                    date = '{interaction.created_at.strftime("%H:%M %m/%d/%Y")}'
                 WHERE
                     user_id = {target.id} AND
                     pic_id = '{pic.id}'"""
             await self.bot.db.execute(query)
             await self.bot.db.commit()
-
-            await interaction.response.send_message(
-                f"{interaction.user.mention} stole a {pic.id} from {target.mention} !",
-                embed=pic.embed)
-        else:
-            await interaction.response.send_message(
-                f"u tried to steal a {pic.id} from {target.mention}, but u already hav 1!",
-                embed=pic.embed,
-                ephemeral=True)
+        
+        await interaction.response.send_message(
+            content=content, embed=pic.embed, ephemeral=ephemeral)
 
     @discord.app_commands.command(
         name="collection",
@@ -566,11 +556,15 @@ class ToofPicsCog(commands.Cog):
         description="Add a new Toof pic with a given image link.")
     @discord.app_commands.describe(
         rarity="The rarity of the new ToofPic.",
-        link="A link to the picture.")
-    @discord.app_commands.choices(rarity=[
-        discord.app_commands.Choice(name="Common", value="C"),
-        discord.app_commands.Choice(name="Rare", value="R"),
-        discord.app_commands.Choice(name="Legendary", value="L")])
+        name="What the new ToofPic will be called.",
+        link="A link to the ToofPic's image.")
+    @discord.app_commands.choices(
+        rarity=[
+            discord.app_commands.Choice(
+                name=rarity.name.capitalize(),
+                value=rarity.name[0].upper())
+            for rarity in ToofPicRarity.list()
+        ])
     @discord.app_commands.check(lambda i: i.user.id == 243845903146811393)
     async def pic_add(
             self, interaction: discord.Interaction,
@@ -579,9 +573,7 @@ class ToofPicsCog(commands.Cog):
 
         all_pics = await ToofPics.from_db(self.bot)
         id = f"{rarity.value}{(len(all_pics)+1):03d}"
-        date = datetime.now().strftime("%H:%M %m/%d/%Y")
-
-        pic = ToofPic(id, name, link, date)
+        date = interaction.created_at.strftime("%H:%M %m/%d/%Y")
 
         query = f"""
             INSERT INTO pics 
@@ -589,10 +581,11 @@ class ToofPicsCog(commands.Cog):
         await self.bot.db.execute(query)
         await self.bot.db.commit()
 
+        pic = ToofPic(id, name, link, date)
         await interaction.response.send_message(
             content="pic added:",
             embed=pic.embed,
-            ephemeral=True)
+            ephemeral=True)        
 
     @pic_add.error
     async def pic_add_error(
