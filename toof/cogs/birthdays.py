@@ -116,10 +116,15 @@ class BirthdayCog(commands.Cog):
             row = await cursor.fetchone()
             
         if row is not None:
-            query = f"UPDATE birthdays SET birthday = '{day}' WHERE user_id = {interaction.user.id}"
+            query = f"""
+                UPDATE birthdays 
+                SET birthday = '{day}' 
+                WHERE user_id = {interaction.user.id}"""
             await self.bot.db.execute(query)
         else:
-            query = f"INSERT INTO birthdays VALUES ({interaction.user.id}, '{day}')"
+            query = f"""
+                INSERT INTO birthdays
+                VALUES ({interaction.user.id}, '{day}')"""
             await self.bot.db.execute(query)
         await self.bot.db.commit()
 

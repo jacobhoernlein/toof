@@ -20,7 +20,12 @@ class WelcomeCog(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         """Creates a new thread whenever a member joins the guild."""
         
-        query = f"SELECT welcome_channel_id, mod_role_id FROM guilds WHERE guild_id = {member.guild.id}"
+        query = f"""
+            SELECT
+                welcome_channel_id, 
+                mod_role_id
+            FROM guilds
+            WHERE guild_id = {member.guild.id}"""
         async with self.bot.db.execute(query) as cursor:
             row = await cursor.fetchone()
         if row is None:
@@ -39,10 +44,13 @@ class WelcomeCog(commands.Cog):
             welcome_thread = await welcome_channel.create_thread(
                 name=f"{member}'s interrogation",
                 invitable=False)
-            await welcome_thread.send(f"welcum {member.mention}. pls wait here. a {mod_role.mention} wil b here soon 👍")
+            await welcome_thread.send(
+                f"welcum {member.mention}. pls wait here. a {mod_role.mention} wil b here soon 👍")
         else:
-            welcome_message = await welcome_channel.send(f"welcum {member.mention} to {member.guild.name}!")
-            welcome_thread = await welcome_message.create_thread(name=f"{member}'s welcome thread")
+            welcome_message = await welcome_channel.send(
+                f"welcum {member.mention} to {member.guild.name}!")
+            welcome_thread = await welcome_message.create_thread(
+                name=f"{member}'s welcome thread")
 
         self.thread_member_dict[welcome_thread] = member
 
@@ -62,7 +70,10 @@ class WelcomeCog(commands.Cog):
             thread = interaction.channel
             member = self.thread_member_dict[thread]
 
-        query = f"SELECT member_role_id FROM guilds WHERE guild_id = {interaction.guild_id}"
+        query = f"""
+            SELECT member_role_id
+            FROM guilds
+            WHERE guild_id = {interaction.guild_id}"""
         async with self.bot.db.execute(query) as cursor:
             row = await cursor.fetchone()
         if row is None:
@@ -78,7 +89,8 @@ class WelcomeCog(commands.Cog):
                 ephemeral=True)
             return
         
-        await interaction.response.send_message(f"{member.mention} haz been accepted 😎")
+        await interaction.response.send_message(
+            f"{member.mention} haz been accepted 😎")
         await member.add_roles(member_role)
         await thread.edit(archived=True, locked=True)
         del self.thread_member_dict[thread]

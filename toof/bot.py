@@ -29,7 +29,9 @@ class ToofBot(commands.Bot):
 
         for filename in os.listdir(cogs_dir):
             if filename.endswith(".py") and not filename.startswith("__"):
-                await self.load_extension(f".cogs.{filename[:-3]}", package="toof")
+                await self.load_extension(
+                    name=f".cogs.{filename[:-3]}",
+                    package="toof")
 
     async def on_ready(self):
         """Connects to the database and loads cogs, as well as syncs
@@ -37,10 +39,32 @@ class ToofBot(commands.Bot):
         """
 
         self.db = await aiosqlite.connect(self.dbname)
-        await self.db.execute("CREATE TABLE IF NOT EXISTS birthdays (user_id INTEGER, birthday TEXT)")
-        await self.db.execute("CREATE TABLE IF NOT EXISTS roles (guild_id INTEGER, role_id INTEGER, emoji TEXT, description TEXT, type TEXT)")
-        await self.db.execute("CREATE TABLE IF NOT EXISTS pics (user_id INTEGER, pic_id TEXT, name TEXT, link TEXT, date TEXT)")
-        await self.db.execute("CREATE TABLE IF NOT EXISTS guilds (guild_id INTEGER, log_channel_id INTEGER, welcome_channel_id INTEGER, quotes_channel_id INTEGER, mod_role_id INTEGER, member_role_id INTEGER)")
+        await self.db.execute("""
+            CREATE TABLE IF NOT EXISTS birthdays (
+                user_id INTEGER, 
+                birthday TEXT)""")
+        await self.db.execute("""
+            CREATE TABLE IF NOT EXISTS roles (
+                guild_id INTEGER,
+                role_id INTEGER,
+                emoji TEXT,
+                description TEXT, 
+                type TEXT)""")
+        await self.db.execute("""
+            CREATE TABLE IF NOT EXISTS pics (
+                user_id INTEGER,
+                pic_id TEXT,
+                name TEXT,
+                link TEXT,
+                date TEXT)""")
+        await self.db.execute("""
+            CREATE TABLE IF NOT EXISTS guilds (
+                guild_id INTEGER,
+                log_channel_id INTEGER,
+                welcome_channel_id INTEGER,
+                quotes_channel_id INTEGER, 
+                mod_role_id INTEGER, 
+                member_role_id INTEGER)""")
         await self.db.commit()
 
         await self.load_extensions()

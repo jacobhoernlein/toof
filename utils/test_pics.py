@@ -2,7 +2,7 @@
 
 from time import perf_counter
 
-from toof.cogs.pics import ToofPic, ToofPics, ToofPicRarity
+from toof.cogs.pics import ToofPic, ToofPics
 
 
 if __name__ == "__main__":

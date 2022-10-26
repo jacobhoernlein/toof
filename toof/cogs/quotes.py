@@ -26,7 +26,10 @@ class QuotesCog(commands.Cog):
             guild: discord.Guild) -> discord.TextChannel | None:
         """Get the quotes channel of the guild by searching the database."""
         
-        query = f"SELECT quotes_channel_id FROM guilds WHERE guild_id = {guild.id}"
+        query = f"""
+            SELECT quotes_channel_id 
+            FROM guilds
+            WHERE guild_id = {guild.id}"""
         async with self.bot.db.execute(query) as cursor:
             row = await cursor.fetchone()
 

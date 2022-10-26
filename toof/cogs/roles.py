@@ -36,7 +36,7 @@ class RoleMenu(list[ConfigRole]):
         guild.
         """
 
-        query = f'SELECT * FROM roles WHERE guild_id = {guild.id}'
+        query = f"SELECT * FROM roles WHERE guild_id = {guild.id}"
         async with bot.db.execute(query) as cursor:
             list = [
                 ConfigRole(
@@ -207,7 +207,11 @@ class RoleCreateModal(discord.ui.Modal):
             mentionable=(self.role_type == "gaming"))
 
         # Updates the database with the role's info.
-        query = f"INSERT INTO roles VALUES ({interaction.guild_id}, {role.id}, '{self.emoji.value}', '{self.description.value}', '{self.role_type}')"
+        query = f"""
+            INSERT INTO roles 
+            VALUES (
+                {interaction.guild_id}, {role.id}, '{self.emoji.value}',
+                '{self.description.value}', '{self.role_type}')"""
         await self.bot.db.execute(query)
         await self.bot.db.commit()
 

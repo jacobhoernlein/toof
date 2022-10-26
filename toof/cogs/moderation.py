@@ -40,7 +40,10 @@ class ModmailModal(discord.ui.Modal):
             text=f"From {interaction.user}", 
             icon_url=interaction.user.avatar.url)
 
-        query = f"SELECT log_channel_id, mod_role_id FROM guilds WHERE guild_id = {interaction.guild_id}"
+        query = f"""
+            SELECT log_channel_id, mod_role_id 
+            FROM guilds 
+            WHERE guild_id = {interaction.guild_id}"""
         async with self.bot.db.execute(query) as cursor:
             row = await cursor.fetchone()
         if row is None:
