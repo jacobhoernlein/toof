@@ -223,15 +223,14 @@ class Collection:
             all_pics = await ToofPics.from_db(bot)
 
         if bot.user == user:
-            usr_pics = sorted(all_pics)
+            usr_pics = ToofPics(sorted(all_pics))
         else:
             query = f"SELECT * FROM pics WHERE user_id = {user.id}"
             async with bot.db.execute(query) as cursor:
-                usr_pics = sorted([
+                usr_pics = ToofPics(sorted([
                     ToofPic(row[1], row[2], row[3], row[4])
                     async for row in cursor
-                ])
-        usr_pics = ToofPics(usr_pics)
+                ]))
 
         return cls(usr_pics, all_pics, user)
 
