@@ -2,6 +2,6 @@
 
 __title__ = "toof"
 __author__ = "jakemrh"
-__version__ = "2.7.0"
+__version__ = "2.8.0"
 
 from .bot import ToofBot
