@@ -1,19 +1,58 @@
 """Extension which contains the moderation cog, which allows the bot to
 listen for deleted and edited messages, as well as accept modmails and
-kick people for listening to Doja Cat (real).
+kicks people for listening to Doja Cat (real).
 """
 
 import discord
-from discord.ext import commands
+from discord.ext.commands import Cog
 
 import toof
+
+
+class ModLogConfig(discord.app_commands.Group):
+    """Config for setting the Mod Log."""
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="log",
+            description="Change settings dealing with the Mod Log.")
+        self.bot = bot
+
+    @discord.app_commands.command(
+        name="disable",
+        description="Disable the Mod Log.")
+    async def disable_command(self, interaction: discord.Interaction):
+        query = f"""
+            UPDATE guilds
+            SET log_channel_id = 0
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            "Mod Log disabled.", ephemeral=True)
+
+    @discord.app_commands.command(
+        name="set",
+        description="Set the Log Channel to the current channel.")
+    async def set_command(self, interaction: discord.Interaction):
+        query = f"""
+            UPDATE guilds
+            SET log_channel_id = {interaction.channel_id}
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            f"Mod Log set to {interaction.channel.mention}",
+            ephemeral=True)
 
 
 class ModmailModal(discord.ui.Modal):
     """Modal to be sent to users running the Modmail command"""
 
-    def __init__(self, bot: toof.ToofBot, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(title="New Modmail")
         self.bot = bot
 
     subject = discord.ui.TextInput(
@@ -31,37 +70,23 @@ class ModmailModal(discord.ui.Modal):
         the guild.
         """
 
-        embed = discord.Embed(
-            color=discord.Color.blue(),
-            description=self.details.value,
-            timestamp=interaction.created_at)
-        embed.set_author(name=f"RE: {self.subject.value}")
-        embed.set_footer(
-            text=f"From {interaction.user}", 
-            icon_url=interaction.user.avatar.url)
-
-        query = f"""
-            SELECT log_channel_id, mod_role_id 
-            FROM guilds 
-            WHERE guild_id = {interaction.guild_id}"""
-        async with self.bot.db.execute(query) as cursor:
-            row = await cursor.fetchone()
-        if row is None:
-            log_channel = None
-            mod_role = None
-        else:
-            log_channel = discord.utils.find(
-                lambda c: c.id == row[0],
-                interaction.guild.channels)
-            mod_role = discord.utils.find(
-                lambda r: r.id == row[1],
-                interaction.guild.roles)
+        log_channel = await self.bot.get_log_channel(interaction.guild)
+        mod_role = await self.bot.get_mod_role(interaction.guild)
 
         if log_channel is None or mod_role is None:
             await interaction.response.send_message(
                 content="modmail culdnt b send :(",
                 ephemeral=True)
         else:
+            embed = discord.Embed(
+                color=discord.Color.blue(),
+                description=self.details.value,
+                timestamp=interaction.created_at)
+            embed.set_author(name=f"RE: {self.subject.value}")
+            embed.set_footer(
+                text=f"From {interaction.user}", 
+                icon_url=interaction.user.avatar.url)
+            
             await log_channel.send(
                 content=f"{mod_role.mention} New Modmail:",
                 embed=embed)
@@ -70,37 +95,32 @@ class ModmailModal(discord.ui.Modal):
                 ephemeral=True)
 
 
-class ModCog(commands.Cog):
-    """Cog containing listeners for message editing/deleting
-    as well as status updates.
-    """
+class ModmailCommand(discord.app_commands.Command):
+    """Sends the modmail modal to the user."""
 
     def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="modmail",
+            description="Something bothering you? Tell the mods.",
+            callback=self.callback)
         self.bot = bot
 
-    async def get_log_channel(
-            self,
-            guild: discord.Guild) -> discord.TextChannel | None:
-        """Get the guild's log_channel by searching the database."""
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(ModmailModal(self.bot))
 
-        query = f"SELECT log_channel_id FROM guilds WHERE guild_id = {guild.id}"
-        async with self.bot.db.execute(query) as cursor:
-            row = await cursor.fetchone()
 
-        return None if row is None else discord.utils.find(
-            lambda c: c.id == row[0],
-            guild.channels)
-    
-    @commands.Cog.listener()
+class ModCog(Cog):
+
+    def __init__(self, bot: toof.ToofBot):
+        bot.tree.add_command(ModmailCommand(bot))
+        self.bot = bot
+
+    @Cog.listener()
     async def on_message_delete(self, message: discord.Message):
-        """Snipes deleted messages and puts them into the server's mod
-        log.
-        """
-        
         if message.author.bot:
             return
 
-        log_channel = await self.get_log_channel(message.guild)
+        log_channel = await self.bot.get_log_channel(message.guild)
         if log_channel is None or message.channel == log_channel:
             return
         
@@ -111,26 +131,22 @@ class ModCog(commands.Cog):
         embed.set_author(
             name=f"Message sent by {message.author} deleted in #{message.channel}:",
             icon_url=message.author.avatar.url)
+        embed.set_footer(text=f"Message ID: {message.id}")
+        
         if message.attachments:
             embed.set_image(url=message.attachments[0].url)
-        embed.set_footer(
-            text=f"Message ID: {message.id}")
-
+        
         await log_channel.send(embed=embed)
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_message_edit(
             self, before: discord.Message,
             after: discord.Message):
-        """Watches for messages being edited and puts a summary in the
-        server's log channel.
-        """
-    
         if before.author.bot or before.content == after.content:
             return
 
-        log_channel = await self.get_log_channel(before.guild)
-        if log_channel is None:
+        log_channel = await self.bot.get_log_channel(before.guild)
+        if log_channel is None or before.channel == log_channel:
             return
 
         embed = discord.Embed(
@@ -139,14 +155,9 @@ class ModCog(commands.Cog):
         embed.set_author(
             name=f"Message sent by {before.author} edited in #{before.channel}:",
             icon_url=before.author.avatar.url)
-        embed.add_field(
-            name="Before:",
-            value=before.content)
-        embed.add_field(
-            name="After:",
-            value=after.content)
-        embed.set_footer(
-            text=f"Message ID: {after.id}")
+        embed.add_field(name="Before:", value=before.content)
+        embed.add_field(name="After:", value=after.content)
+        embed.set_footer(text=f"Message ID: {after.id}")
   
         await log_channel.send(
             embed=embed,
@@ -157,12 +168,10 @@ class ModCog(commands.Cog):
                     url=before.jump_url,
                     emoji="⤴️")))
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_presence_update(
             self, before: discord.Member, 
             after: discord.Member):
-        """Kicks people for listening to Say So by Doja Cat"""
-        
         for activity in after.activities:
             if (isinstance(activity, discord.Spotify)
                 and activity.title == "Say So"
@@ -174,16 +183,7 @@ class ModCog(commands.Cog):
 
                     break
                     
-    @discord.app_commands.command(
-        name="modmail",
-        description="Something bothering you? Tell the mods.")
-    async def modmail_command(self, interaction: discord.Interaction):
-        """Sends the modmail modal to the user."""
-        
-        await interaction.response.send_modal(
-            ModmailModal(self.bot, title="New Modmail"))
-
-
+    
 async def setup(bot: toof.ToofBot):
     await bot.add_cog(ModCog(bot))
     

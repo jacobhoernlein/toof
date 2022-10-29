@@ -4,38 +4,143 @@ of the server.
 """
 
 import discord
-from discord.ext import commands
+from discord.ext.commands import Cog
 
 import toof
 
 
-class WelcomeCog(commands.Cog):
-    """Cog that contains listeners for users joining the server."""
+class WelcomeChannelConfig(discord.app_commands.Group):
 
     def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="welcome",
+            description="Change settings dealing with the Welcome Channel.")
         self.bot = bot
-        self.thread_member_dict: dict[discord.Thread, discord.Member] = {}
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
-        """Creates a new thread whenever a member joins the guild."""
-        
+    @discord.app_commands.command(
+        name="disable",
+        description="Disable the Welcome Channel.")
+    async def disable_command(self, interaction: discord.Interaction):
         query = f"""
-            SELECT
-                welcome_channel_id, 
-                mod_role_id
-            FROM guilds
-            WHERE guild_id = {member.guild.id}"""
+            UPDATE guilds
+            SET welcome_channel_id = 0
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            "Welcome Channel disabled.", ephemeral=True)
+
+    @discord.app_commands.command(
+        name="set",
+        description="Set the Welcome Channel to the current channel.")
+    async def set_command(self, interaction: discord.Interaction):
+        query = f"""
+            UPDATE guilds
+            SET welcome_channel_id = {interaction.channel_id}
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            f"Welcome Channel set to {interaction.channel.mention}",
+            ephemeral=True)
+
+
+class WelcomeCommandGroup(discord.app_commands.Group):
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="welcome",
+            description="Commands relating to welcome threads.",
+            guild_only=True)
+        self.bot = bot
+
+    @discord.app_commands.command(
+        name="approve",
+        description="Approve the user..")
+    async def approve_command(self, interaction: discord.Interaction):
+        """Adds the member role to the user and locks the guild."""
+
+        member = await self.get_thread_member(interaction.channel)
+        role = await self.bot.get_member_role(interaction.guild)
+
+        if member is None:
+            await interaction.response.send_message(
+                "u gotta do this in a welcom thred!",
+                ephemeral=True)
+            return
+        if role is None:
+            await interaction.response.send_message(
+                "ur member role isnt set up right !!",
+                ephemeral=True)
+            return
+        
+        await interaction.response.send_message(
+            f"{member.mention} haz been accepted 😎")
+        await member.add_roles(role)
+        await interaction.channel.edit(archived=True, locked=True)
+        await self.remove_thread(interaction.channel)
+
+    @discord.app_commands.command(
+        name="deny",
+        description="Deny this user.")
+    async def deny_command(self, interaction: discord.Interaction):
+        
+        member = await self.get_thread_member(interaction.channel)
+
+        if member is None:
+            await interaction.response.send_message(
+                "u gotta do this in a welcom thred!",
+                ephemeral=True)
+            return
+
+        await interaction.response.send_message(
+            f"{member} haz been rejected 👢")
+        await member.kick()
+        await interaction.channel.edit(archived=True, locked=True)
+        await self.remove_thread(interaction.channel)
+
+    async def get_thread_member(self, thread: discord.Thread):
+        """Get the member that the thread maps to by searching the
+        database.
+        """
+
+        query = f"""
+            SELECT user_id
+            FROM threads
+            WHERE thread_id = {thread.id}"""
         async with self.bot.db.execute(query) as cursor:
             row = await cursor.fetchone()
         if row is None:
-            welcome_channel = None
-            mod_role = None
-        else:
-            welcome_channel = self.bot.get_channel(row[0])
-            mod_role = discord.utils.find(
-                lambda r: r.id == row[1],
-                member.guild.roles)
+            return None
+        
+        return discord.utils.find(
+            lambda m: m.id == row[0],
+            thread.guild.members)
+
+    async def remove_thread(self, thread: discord.Thread):
+        """Remove the thread from the database."""
+        
+        query = f"""
+            DELETE FROM threads
+            WHERE thread_id = {thread.id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+
+class WelcomeCog(Cog):
+
+    def __init__(self, bot: toof.ToofBot):
+        bot.tree.add_command(WelcomeCommandGroup(bot))
+        self.bot = bot
+
+    @Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        """Creates a new thread whenever a member joins the guild."""
+        
+        mod_role = await self.bot.get_mod_role(member.guild)
+        welcome_channel = await self.bot.get_welcome_channel(member.guild)
 
         if welcome_channel is None or mod_role is None:
             return
@@ -52,68 +157,13 @@ class WelcomeCog(commands.Cog):
             welcome_thread = await welcome_message.create_thread(
                 name=f"{member}'s welcome thread")
 
-        self.thread_member_dict[welcome_thread] = member
-
-    @discord.app_commands.command(
-        name="accept",
-        description="Approve the user to join the server.")
-    @discord.app_commands.guild_only()
-    async def accept_command(self, interaction: discord.Interaction):
-        """Adds the member role to the user and locks the guild."""
-
-        if interaction.channel not in self.thread_member_dict:
-            await interaction.response.send_message(
-                content="u gota do this in a welcom thread !",
-                ephemeral=True)
-            return
-        else:
-            thread = interaction.channel
-            member = self.thread_member_dict[thread]
-
         query = f"""
-            SELECT member_role_id
-            FROM guilds
-            WHERE guild_id = {interaction.guild_id}"""
-        async with self.bot.db.execute(query) as cursor:
-            row = await cursor.fetchone()
-        if row is None:
-            member_role = None
-        else:
-            member_role = discord.utils.find(
-                lambda c: c.id == row[0],
-                interaction.guild.roles)
-        
-        if member_role is None:
-            await interaction.response.send_message(
-                "make sur ur member role is set up right 👍",
-                ephemeral=True)
-            return
-        
-        await interaction.response.send_message(
-            f"{member.mention} haz been accepted 😎")
-        await member.add_roles(member_role)
-        await thread.edit(archived=True, locked=True)
-        del self.thread_member_dict[thread]
-
-    @discord.app_commands.command(
-        name="reject",
-        description="Reject this user from joining the server.")
-    @discord.app_commands.guild_only()
-    async def reject_command(self, interaction: discord.Interaction):
-        
-        if interaction.channel not in self.thread_member_dict:
-            await interaction.response.send_message(
-                "u gota do this in a welcom thread !",
-                ephemeral=True)
-            return
-        else:
-            thread = interaction.channel
-            member = self.thread_member_dict[thread]
-
-        await interaction.response.send_message(f"{member} haz been rejected")
-        await member.kick()
-        await thread.edit(archived=True, locked=True)
-        del self.thread_member_dict[thread]
+            INSERT INTO threads
+            VALUES (
+                {welcome_thread.id},
+                {member.id})"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
 
 
 async def setup(bot: toof.ToofBot):

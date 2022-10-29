@@ -1,5 +1,7 @@
 """Establishes the bot class."""
 
+import asyncio
+import datetime
 import os
 
 import aiosqlite
@@ -22,22 +24,11 @@ class ToofBot(commands.Bot):
         self.db: aiosqlite.Connection = None
         self.dbname = dbname
 
-    async def load_extensions(self):
-
-        cur_path = os.path.dirname(__file__)
-        cogs_dir = os.path.join(cur_path, "cogs")
-
-        for filename in os.listdir(cogs_dir):
-            if filename.endswith(".py") and not filename.startswith("__"):
-                await self.load_extension(
-                    name=f".cogs.{filename[:-3]}",
-                    package="toof")
+    def run(self, token: str):
+        super().run(token)
+        asyncio.run(self.db.close())
 
     async def on_ready(self):
-        """Connects to the database and loads cogs, as well as syncs
-        the command tree.
-        """
-
         self.db = await aiosqlite.connect(self.dbname)
         await self.db.execute("""
             CREATE TABLE IF NOT EXISTS birthdays (
@@ -65,9 +56,20 @@ class ToofBot(commands.Bot):
                 quotes_channel_id INTEGER, 
                 mod_role_id INTEGER, 
                 member_role_id INTEGER)""")
+        await self.db.execute("""
+            CREATE TABLE IF NOT EXISTS threads (
+                thread_id INTEGER,
+                user_id INTEGER)""")
         await self.db.commit()
 
-        await self.load_extensions()
+        cur_path = os.path.dirname(__file__)
+        cogs_dir = os.path.join(cur_path, "cogs")
+        for filename in os.listdir(cogs_dir):
+            if filename.endswith(".py") and not filename.startswith("__"):
+                await self.load_extension(
+                    name=f".cogs.{filename[:-3]}",
+                    package="toof")
+
         await self.tree.sync()
 
         print("""
@@ -76,3 +78,78 @@ class ToofBot(commands.Bot):
   / /\/ _ \ / _ \| |_ /__\/// _ \| __|
  / / | (_) | (_) |  _/ \/  \ (_) | |_ 
  \/   \___/ \___/|_| \_____/\___/ \__|""")
+
+    async def get_birthday(self, user: discord.User) -> datetime.datetime:
+        """Get the given user's birthday by searching the database."""
+
+        query = f"SELECT birthday FROM birthdays WHERE user_id = {user.id}"
+        async with self.db.execute(query) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return datetime.datetime.strptime(row[0], "%m/%d/%Y")
+
+    async def get_log_channel(self, guild: discord.Guild):
+        """Get the log channel for the server."""
+
+        query = f"SELECT log_channel_id FROM guilds WHERE guild_id = {guild.id}"
+        async with self.db.execute(query) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return self.get_channel(row[0])
+
+    async def get_mod_role(self, guild: discord.Guild):
+        """Get the mod role of the server."""
+
+        query = f"SELECT mod_role_id FROM guilds WHERE guild_id = {guild.id}"
+        async with self.db.execute(query) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return discord.utils.find(lambda r: r.id == row[0], guild.roles)
+
+    async def get_quotes_channel(self, guild: discord.Guild):
+        """Get the quotes channel of the guild by searching the bot's
+        database.
+        """
+            
+        query = f"""
+            SELECT quotes_channel_id 
+            FROM guilds
+            WHERE guild_id = {guild.id}"""
+        async with self.db.execute(query) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return self.get_channel(row[0])
+        
+    async def get_member_role(self, guild: discord.Guild):
+        """Get the member role for the guild."""
+
+        query = f"""
+            SELECT member_role_id
+            FROM guilds
+            WHERE guild_id = {guild.id}"""
+        async with self.db.execute(query) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return discord.utils.find(lambda r: r.id == row[0], guild.roles)
+
+    async def get_welcome_channel(self, guild: discord.Guild):
+        """Gets the welcome channel of the given guild."""
+        
+        query = f"""
+            SELECT welcome_channel_id
+            FROM guilds
+            WHERE guild_id = {guild.id}"""
+        async with self.db.execute(query) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return self.get_channel(row[0])
+        
+    @property
+    def toofping_emote(self):
+        return discord.utils.find(lambda e: e.name == "toofping", self.emojis)

@@ -7,33 +7,89 @@ birthdays.
 import datetime
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext.commands import Cog 
+from discord.ext.tasks import loop
 
 import toof
 
 
-class BirthdayCog(commands.Cog):
-    """Cog that contains a loop to watch birthdays and commands
-    relating to them.
+class CheckBirthdayContext(discord.app_commands.ContextMenu):
+    """Looks through the database for the given member and lets
+    the caller know if it found anything.
     """
 
     def __init__(self, bot: toof.ToofBot):
+        super().__init__(name="Check Birthday", callback=self.callback)
         self.bot = bot
- 
-    async def cog_load(self):
-        self.bot.tree.add_command(
-            discord.app_commands.ContextMenu(
-                name="Check Birthday",
-                callback=self.birthday_context_callback))
+
+    async def callback(
+            self, interaction: discord.Interaction,
+            member: discord.Member):
         
-        self.check_day.start()
+        birthday = await self.bot.get_birthday(member)
+        if birthday is not None:
+            await interaction.response.send_message(
+                f"woof! ({birthday.strftime('%m/%d/%Y')})",
+                ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                "idk ther bday!",
+                ephemeral=True)
+        
 
-    def cog_unload(self):
-        self.check_day.stop()
+class BirthdayCommand(discord.app_commands.Command):
+    """Allows users to add their birthdays to the database, or update
+    it if it is already in the database.
+    """
 
-    @tasks.loop(hours=12)
-    async def check_day(self):
-        """Sends a birthday message on birthdays"""
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="birthday",
+            description="Tell Toof your birthday.",
+            callback=self.callback)
+        self.bot = bot
+
+    @discord.app_commands.describe(birthday="Format as mm/dd/yyyy.")
+    async def callback(self, interaction: discord.Interaction, birthday: str):
+        
+        try:
+            # Parses string as datetime to make sure it is formatted
+            # correctly.
+            datetime.datetime.strptime(birthday, "%m/%d/%Y")
+        except ValueError:
+            await interaction.response.send_message(
+                "woof! you gotta format as mm/dd/yyyy", 
+                ephemeral=True)
+            return
+        
+        if await self.bot.get_birthday(interaction.user) is not None:
+            query = f"""
+                UPDATE birthdays 
+                SET birthday = '{birthday}' 
+                WHERE user_id = {interaction.user.id}"""
+        else:
+            query = f"""
+                INSERT INTO birthdays
+                VALUES ({interaction.user.id}, '{birthday}')"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message("updooted !", ephemeral=True)
+       
+
+class BirthdayCog(Cog):
+
+    def __init__(self, bot: toof.ToofBot):
+        bot.tree.add_command(CheckBirthdayContext(bot))
+        bot.tree.add_command(BirthdayCommand(bot))
+        self.check_for_birthdays.start()
+        self.bot = bot
+
+    @loop(hours=12)
+    async def check_for_birthdays(self):
+        """Checks for birthdays and sends a happy birthday message to
+        each guild's welcome channel that has users with birthdays in it.
+        """
 
         # Only let the bot send bday messages in the AM
         now = datetime.datetime.now()
@@ -41,7 +97,7 @@ class BirthdayCog(commands.Cog):
             return
 
         # Creates a list of users whose birthdays are today
-        now = now.strftime("%m/%d")
+        now = now.strftime("%m/%d/")
         query = f"SELECT user_id FROM birthdays WHERE birthday LIKE '{now}%'"
         async with self.bot.db.execute(query) as cursor:
             bday_users = [self.bot.get_user(row[0]) async for row in cursor]
@@ -50,19 +106,18 @@ class BirthdayCog(commands.Cog):
         # users in that channel's guild
         query = "SELECT welcome_channel_id FROM guilds"
         async with self.bot.db.execute(query) as cursor:
-            welcome_channels = {
-                self.bot.get_channel(row[0]): [
-                    member for member in bday_users 
-                    if member in self.bot.get_channel(row[0]).members
-                ] 
-                async for row in cursor
-            }
+            chan_dict: dict[discord.TextChannel, list[discord.Member]] = {}
+            async for row in cursor:
+                channel = self.bot.get_channel(row[0])
+                users_in_channel = [
+                    member for member in bday_users
+                    if member in channel.members
+                ]
+                if users_in_channel:
+                    chan_dict[channel] = users_in_channel
 
         # Sends a message to each channel with birthday users
-        for channel, members in welcome_channels.items():
-            if not members:
-                continue
-
+        for channel, members in chan_dict.items():
             content = ""
             for member in members:
                 content += f"{member.mention} "
@@ -70,67 +125,7 @@ class BirthdayCog(commands.Cog):
 
             await channel.send(content)
 
-    async def birthday_context_callback(
-            self, interaction: discord.Interaction, 
-            member: discord.Member):
-        """Looks through the birthdays table for the given member
-        and lets the caller know if it found anything.
-        """
-        
-        query = f"SELECT birthday FROM birthdays WHERE user_id = {member.id}"
-        async with self.bot.db.execute(query) as cursor:
-            row = await cursor.fetchone()
 
-        if row is not None:
-            await interaction.response.send_message(
-                f"woof! ({row[0]})",
-                ephemeral=True)
-        else:
-            await interaction.response.send_message(
-                "idk ther bday!",
-                ephemeral=True)
-
-    @discord.app_commands.command(
-        name="birthday",
-        description="Tell Toof your birthday.")
-    @discord.app_commands.describe(birthday="Format as mm/dd/yyyy.")
-    async def birthday_command(
-            self, interaction: discord.Interaction, 
-            birthday: str):
-        """Allows users to add their birthdays to the file."""
-        
-        # Ensures the birthday is formatted correctly.
-        try:
-            day = datetime.datetime.strptime(birthday, "%m/%d/%Y")
-        except ValueError:
-            await interaction.response.send_message(
-                "woof! you gotta format as mm/dd/yyyy", 
-                ephemeral=True
-            )
-            return
-        else:
-            day = day.strftime("%m/%d/%Y")
-        
-        query = f"SELECT * FROM birthdays WHERE user_id = {interaction.user.id}"
-        async with self.bot.db.execute(query) as cursor:
-            row = await cursor.fetchone()
-            
-        if row is not None:
-            query = f"""
-                UPDATE birthdays 
-                SET birthday = '{day}' 
-                WHERE user_id = {interaction.user.id}"""
-            await self.bot.db.execute(query)
-        else:
-            query = f"""
-                INSERT INTO birthdays
-                VALUES ({interaction.user.id}, '{day}')"""
-            await self.bot.db.execute(query)
-        await self.bot.db.commit()
-
-        await interaction.response.send_message("updooted !", ephemeral=True)
-       
-          
 async def setup(bot: toof.ToofBot):
     await bot.add_cog(BirthdayCog(bot))
     

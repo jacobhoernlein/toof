@@ -5,81 +5,25 @@ now just tracks how long users were in a channel for.
 import datetime
 
 import discord
-from discord.ext import commands
+from discord.ext.commands import Cog
 
 import toof
 
 
-class VoiceCog(commands.Cog):
-    """Cog that watches for voice updates."""
+class CheckVoiceContext(discord.app_commands.ContextMenu):
+    """Checks how long a given user has been in a voice channel."""
 
-    def __init__(self, bot: toof.ToofBot):
+    def __init__(
+            self, bot: toof.ToofBot,
+            id_time_dict: dict[int, datetime.datetime]):
+        super().__init__(name="Check Voice Time", callback=self.callback)
+        self.guild_only = True
         self.bot = bot
-        self.id_time_dict: dict[int, datetime.datetime] = {}
+        self.id_time_dict = id_time_dict
 
-    async def cog_load(self):
-        """Creates the dictionary when the cog is loaded with current
-        voice users.
-        """
-
-        self.bot.tree.add_command(
-            discord.app_commands.ContextMenu(
-                name="Check Voice Time",
-                callback=self.check_voice_callback))
-
-        self.id_time_dict = {}
-        for guild in self.bot.guilds:
-            for voice_channel in guild.voice_channels:
-                for member in voice_channel.members:
-                    self.id_time_dict[member.id] = datetime.datetime.now()
-
-    @commands.Cog.listener()
-    async def on_resumed(self):
-        """When the connection to discord is resumed, catches any voice
-        updates the bot may have missed.
-        """
-
-        # Creates a list of all members currently in a voice channel
-        current_member_ids: list[int] = []
-        for guild in self.bot.guilds:
-            for voice_channel in guild.voice_channels:
-                for member in voice_channel.members:
-                    current_member_ids.append(member.id)
-
-        # Deletes all members from the dict who are no longer connected
-        ids_to_delete = [
-            member_id for member_id in self.id_time_dict 
-            if member_id not in current_member_ids]
-        for id in ids_to_delete:
-            del self.id_time_dict[id]
-
-        # Adds all members to the dict who need to be added
-        ids_to_add = [
-            member_id for member_id in current_member_ids
-            if member_id not in self.id_time_dict]
-        for id in ids_to_add:
-            self.id_time_dict[id] = datetime.datetime.now()
-
-    @commands.Cog.listener()
-    async def on_voice_state_update(
-            self, member: discord.Member, 
-            before: discord.VoiceState, after: discord.VoiceState):
-        """Handles users joining or leaving a channel
-        by updating the internal dict.
-        """
-        
-        # Member joins a voice channel
-        if after.channel and member.id not in self.id_time_dict:
-            self.id_time_dict[member.id] = datetime.datetime.now()
-        # Member leaves voice
-        if not after.channel and member.id in self.id_time_dict:
-            del self.id_time_dict[member.id]
-
-    @discord.app_commands.guild_only()
-    async def check_voice_callback(
+    async def callback(
             self, interaction: discord.Interaction,
             member: discord.Member):
-        """Checks how long a given user has been in a voice channel."""
         
         if member.id not in self.id_time_dict:
             await interaction.response.send_message(
@@ -105,8 +49,57 @@ class VoiceCog(commands.Cog):
         await interaction.response.send_message(
             content=string,
             ephemeral=True)
-        
 
+
+class VoiceCog(Cog):
+
+    def __init__(self, bot: toof.ToofBot):
+        
+        now = datetime.datetime.now()
+        self.id_time_dict: dict[int, datetime.datetime] = {}
+        for guild in bot.guilds:
+            for voice_channel in guild.voice_channels:
+                for member in voice_channel.members:
+                    self.id_time_dict[member.id] = now
+        
+        bot.tree.add_command(CheckVoiceContext(bot, self.id_time_dict))
+        self.bot = bot
+        
+    @Cog.listener()
+    async def on_resumed(self):
+        # Creates a list of all members currently in a voice channel
+        current_member_ids: list[int] = []
+        for guild in self.bot.guilds:
+            for voice_channel in guild.voice_channels:
+                for member in voice_channel.members:
+                    current_member_ids.append(member.id)
+
+        # Deletes all members from the dict who are no longer connected
+        ids_to_delete = [
+            member_id for member_id in self.id_time_dict 
+            if member_id not in current_member_ids]
+        for id in ids_to_delete:
+            del self.id_time_dict[id]
+
+        # Adds all members to the dict who need to be added
+        ids_to_add = [
+            member_id for member_id in current_member_ids
+            if member_id not in self.id_time_dict]
+        for id in ids_to_add:
+            self.id_time_dict[id] = datetime.datetime.now()
+
+    @Cog.listener()
+    async def on_voice_state_update(
+            self, member: discord.Member, 
+            before: discord.VoiceState, after: discord.VoiceState):
+        # Member joins a voice channel
+        if after.channel and member.id not in self.id_time_dict:
+            self.id_time_dict[member.id] = datetime.datetime.now()
+        # Member leaves voice
+        if not after.channel and member.id in self.id_time_dict:
+            del self.id_time_dict[member.id]
+
+    
 async def setup(bot: toof.ToofBot):
     await bot.add_cog(VoiceCog(bot))
     

@@ -1,6 +1,7 @@
 """Extension that implements the really cool Toof Pic system. Users get
-a pic using /pic, then receive a random pic of a certain rarity. Then
-they can see their entire collection using /pics.
+a pic using /pic roll, then receive a random pic of a certain rarity. Then
+they can see their entire collection using /pic collection. Or steal from
+others using /pic steal.
 """
 
 from dataclasses import dataclass
@@ -8,13 +9,12 @@ from datetime import datetime
 import random
 
 import discord
-from discord.ext import commands
 
 import toof
 
 
-class ToofPicRarity:
-    """Class representing different rarities."""
+class PicRarity:
+    """Class representing different ToofPic rarities."""
 
     def __init__(
             self, name: str, value: int, weight: float,
@@ -92,28 +92,28 @@ class ToofPicRarity:
                 return cls.unknown
 
     def __eq__(self, other):
-        if isinstance(other, ToofPicRarity):
+        if isinstance(other, PicRarity):
             return self.value == other.value
         elif isinstance(other, str):
             return self.name == other
         elif isinstance(other, int):
             return self.value == other
         else:
-            raise TypeError(f"Equality not supported between ToofPicRarity and {other.__class__}")
+            raise TypeError(f"Equality not supported between Rarity and {other.__class__}")
 
     def __lt__(self, other):
-        if isinstance(other, ToofPicRarity):
+        if isinstance(other, PicRarity):
             return self.value < other.value
         elif isinstance(other, int):
             return self.value < other
         else:
-            raise TypeError(f"Less-Than not supported between ToofPicRarity and {other.__class__}")
+            raise TypeError(f"Less-Than not supported between Rarity and {other.__class__}")
         
     def __str__(self):
         return self.name
 
     def __repr__(self):
-        return f"<ToofPicRarity.{self.name}: {self.value}>"
+        return f"<Rarity.{self.name}: {self.value}>"
 
 
 @dataclass
@@ -136,8 +136,8 @@ class ToofPic:
         self.date = new_dt.strftime("%H:%M %m/%d/%Y")
 
     @property
-    def rarity(self) -> ToofPicRarity:
-        return ToofPicRarity.get(self.id)
+    def rarity(self) -> PicRarity:
+        return PicRarity.get(self.id)
         
     @property
     def embed(self) -> discord.Embed:
@@ -175,7 +175,7 @@ class ToofPics(list[ToofPic]):
         return cls(list)
 
     def __getitem__(self, key):
-        if isinstance(key, str) or isinstance(key, ToofPicRarity):
+        if isinstance(key, str) or isinstance(key, PicRarity):
             return [pic for pic in self if pic.rarity == key]
         return super().__getitem__(key)
         
@@ -184,7 +184,7 @@ class ToofPics(list[ToofPic]):
         weighted by rarity. Raises IndexError if the list is empty.
         """
 
-        rarities = ToofPicRarity.list()
+        rarities = PicRarity.list()
 
         while True:
             # Select a rarity from the list.
@@ -204,11 +204,11 @@ class Collection:
     """Object representing a user's collection of ToofPics."""
 
     def __init__(
-            self, usr_pics: ToofPics,
-            all_pics: ToofPics, user: discord.User):
+            self, usr_pics: ToofPics, all_pics: ToofPics = ToofPics(),
+            user: discord.User = None):
         self.pics = usr_pics
         self.__overview = self.__get_overview_embed(usr_pics, all_pics, user)
-        self.__page = ToofPicRarity.overview
+        self.__page = PicRarity.overview
         self.__index = 0
 
     @classmethod
@@ -242,14 +242,14 @@ class Collection:
     @property
     def cur_content(self):
         """The current content for the menu."""
-        if self.page == ToofPicRarity.overview or self.cur_pics:
+        if self.page == PicRarity.overview or self.cur_pics:
             return None
         return f"You don't have any {self.page} ToofPics!"
         
     @property
     def cur_embed(self):
         """The current embed of the menu."""
-        if self.page == ToofPicRarity.overview:
+        if self.page == PicRarity.overview:
             return self.__overview
         if self.cur_pics:
             return self.cur_pics[self.index].embed
@@ -261,10 +261,12 @@ class Collection:
         return self.__page
 
     @page.setter
-    def page(self, new_page: str | ToofPicRarity):
+    def page(self, new_page: str | PicRarity):
         """Sets the page and handles changing other attributes."""
         if isinstance(new_page, str):
-            new_page = ToofPicRarity.get(new_page)
+            new_page = PicRarity.get(new_page)
+        elif not isinstance(new_page, PicRarity):
+            raise TypeError(f"Cannot set Collection.page to {new_page.__class__}")
         if new_page != self.page:
             self.__index = 0
         self.__page = new_page
@@ -290,18 +292,20 @@ class Collection:
         user has no pictures.
         """
         
+        if not all_pics or user is None:
+            return None
+
         embed = discord.Embed(
             color=(
                 discord.Color.gold() if len(usr_pics) == len(all_pics)
                 else discord.Color.blurple()),
             description="")
-        if user:
-            embed.set_author(
-                name=f"{user.name}'s Collection Overview:",
-                icon_url=user.avatar.url)
+        embed.set_author(
+            name=f"{user.name}'s Collection Overview:",
+            icon_url=user.avatar.url)
 
-        for rarity in ToofPicRarity.list() + [ToofPicRarity.overview]:
-            if rarity == ToofPicRarity.overview:
+        for rarity in PicRarity.list() + [PicRarity.overview]:
+            if rarity == PicRarity.overview:
                 num_usr = len(usr_pics)
                 num_all = len(all_pics)
                 embed.description += f"\n**TOTAL:** {num_usr} of {num_all} pics "
@@ -309,7 +313,10 @@ class Collection:
                 num_usr = len(usr_pics[rarity])
                 num_all = len(all_pics[rarity])
                 embed.description += f"{rarity.emoji} {num_usr} of {num_all} {rarity} pics "
-            percent = num_usr / num_all * 100
+            try:
+                percent = num_usr / num_all * 100
+            except ZeroDivisionError:
+                percent = 0
 
             if num_usr == num_all:
                 embed.description += f"(💯)\n"
@@ -326,12 +333,12 @@ class CollectionSelect(discord.ui.Select):
         
         options = [
             discord.SelectOption(
-                label=rarity.name.capitalize(),
-                value=rarity.name,
-                description=rarity.description,
-                emoji=rarity.emoji,
-                default=(collection.page == rarity)
-            ) for rarity in [ToofPicRarity.overview] + ToofPicRarity.list()
+                label=page.name.capitalize(),
+                value=page.name,
+                description=page.description,
+                emoji=page.emoji,
+                default=(collection.page == page)
+            ) for page in [PicRarity.overview] + PicRarity.list()
         ]
         
         super().__init__(options=options, *args, **kwargs)
@@ -382,7 +389,7 @@ class ShareButton(discord.ui.Button):
         super().__init__(
             style=discord.ButtonStyle.primary, label="Share",
             disabled=(
-                collection.page != ToofPicRarity.overview
+                collection.page != PicRarity.overview
                 and not collection.cur_pics),
             emoji="⤴️", *args, **kwargs)
         self.collection = collection
@@ -412,8 +419,11 @@ class CollectionView(discord.ui.View):
 
 class PicCommandGroup(discord.app_commands.Group):
 
-    def __init__(self, bot: toof.ToofBot, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="pic",
+            description="Commands relating to ToofPics.",
+            guild_only=True)
         self.bot = bot
 
     @discord.app_commands.command(
@@ -501,7 +511,7 @@ class PicCommandGroup(discord.app_commands.Group):
         name="collection",
         description="See what Toof pics you've collected.")
     async def pic_collection(self, interaction: discord.Interaction):
-        """Allows users to see their collection of pics."""
+        """Allows users to see their own collection of pics."""
 
         collection = await Collection.from_db(self.bot, interaction.user)
         
@@ -518,41 +528,17 @@ class PicCommandGroup(discord.app_commands.Group):
                 content=f"slow down!!! ({error.retry_after:.2f}s)", ephemeral=True)
 
 
-class ToofPicsCog(commands.Cog):
-    """Cog which contains commands to interact with the Toof Pics
-    extension.
-    """
+class PicAddCommand(discord.app_commands.Command):
+    """Adds a new pic to the database, only usable by me."""
 
     def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="pic-add",
+            description="Add a new Toof pic with a given image link.",
+            callback=self.callback)
+        self.on_error = self.error
         self.bot = bot
 
-    async def cog_load(self):
-        self.bot.tree.add_command(
-            discord.app_commands.ContextMenu(
-                name="Check Collection",
-                callback=self.collection_context_callback))
-        self.bot.tree.add_command(
-            PicCommandGroup(
-                bot=self.bot,
-                name="pic",
-                description="Commands relating to ToofPics.",
-                guild_only=True))
-
-    async def collection_context_callback(
-            self, interaction: discord.Interaction,
-            member: discord.Member):
-        """Returns an embed summarizing the user's collection."""
-
-        collection = await Collection.from_db(self.bot, member)
-
-        await interaction.response.send_message(
-            content=f"{member.name} hasznt found any ToofPics :(" if not collection.pics else None,
-            embed=collection.cur_embed if collection.pics else None,
-            ephemeral=True)
-    
-    @discord.app_commands.command(
-        name="picadd",
-        description="Add a new Toof pic with a given image link.")
     @discord.app_commands.describe(
         rarity="The rarity of the new ToofPic.",
         name="What the new ToofPic will be called.",
@@ -562,14 +548,14 @@ class ToofPicsCog(commands.Cog):
             discord.app_commands.Choice(
                 name=rarity.name.capitalize(),
                 value=rarity.name[0].upper())
-            for rarity in ToofPicRarity.list()
+            for rarity in PicRarity.list()
         ])
+    # Change this to your account's user id:
     @discord.app_commands.check(lambda i: i.user.id == 243845903146811393)
-    async def pic_add(
+    async def callback(
             self, interaction: discord.Interaction,
             rarity: discord.app_commands.Choice[str], name: str, link: str):
-        """Adds a new pic to the database, only usable by me."""
-
+        
         all_pics = await ToofPics.from_db(self.bot)
         id = f"{rarity.value}{(len(all_pics)+1):03d}"
         date = interaction.created_at.strftime("%H:%M %m/%d/%Y")
@@ -584,17 +570,48 @@ class ToofPicsCog(commands.Cog):
         await interaction.response.send_message(
             content="pic added:",
             embed=pic.embed,
-            ephemeral=True)        
+            ephemeral=True)
 
-    @pic_add.error
-    async def pic_add_error(
-            self, interaction: discord.Interaction, 
+    async def error(
+            self, _, interaction: discord.Interaction,
             error: discord.app_commands.AppCommandError):
         if isinstance(error, discord.app_commands.CheckFailure):
             await interaction.response.send_message(
                 "u cant do that!", ephemeral=True)
+        else:
+            raise error
+
+
+class CheckCollectionContext(discord.app_commands.ContextMenu):
+    """Lets users see others' ToofPic Collections via context menu."""
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="Check Collection",
+            callback=self.callback)
+        self.bot = bot
+
+    async def callback(
+            self, interaction: discord.Interaction,
+            member: discord.Member):
+        
+        collection = await Collection.from_db(self.bot, member)
+        
+        if collection.pics:
+            content = None
+            embed = collection.cur_embed
+        else:
+            content = f"{member.name} hasznt found any ToofPics :("
+            embed = None
+
+        await interaction.response.send_message(
+            content=content,
+            embed=embed,
+            ephemeral=True)
 
 
 async def setup(bot: toof.ToofBot):
-    await bot.add_cog(ToofPicsCog(bot))
+    bot.tree.add_command(PicCommandGroup(bot))
+    bot.tree.add_command(PicAddCommand(bot))
+    bot.tree.add_command(CheckCollectionContext(bot))
     

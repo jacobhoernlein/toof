@@ -4,62 +4,75 @@ added to the quoteboard channel.
 """
 
 import discord
-from discord.ext import commands
 
 import toof
 
 
-class QuotesCog(commands.Cog):
-    """Cog containing a quote context menu and command."""
+class QuotesChannelConfig(discord.app_commands.Group):
+    """Config for setting the voice channel."""
 
     def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="quotes",
+            description="Change settings dealing with the Quotes Channel.")
         self.bot = bot
 
-    async def cog_load(self):
-        self.bot.tree.add_command(
-            discord.app_commands.ContextMenu(
-                name="Quote Message",
-                callback=self.quote_context_callback))
-
-    async def get_quotes_channel(
-            self,
-            guild: discord.Guild) -> discord.TextChannel | None:
-        """Get the quotes channel of the guild by searching the database."""
-        
+    @discord.app_commands.command(
+        name="disable",
+        description="Disable the Quotes Channel.")
+    async def disable_command(self, interaction: discord.Interaction):
         query = f"""
-            SELECT quotes_channel_id 
-            FROM guilds
-            WHERE guild_id = {guild.id}"""
-        async with self.bot.db.execute(query) as cursor:
-            row = await cursor.fetchone()
+            UPDATE guilds
+            SET quotes_channel_id = 0
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
 
-        return None if row is None else self.bot.get_channel(row[0])
+        await interaction.response.send_message(
+            "Quotes Channel disabled.", ephemeral=True)
 
-    @discord.app_commands.guild_only()
-    async def quote_context_callback(
+    @discord.app_commands.command(
+        name="set",
+        description="Set the Quotes Channel to the current channel.")
+    async def set_command(self, interaction: discord.Interaction):
+        query = f"""
+            UPDATE guilds
+            SET quotes_channel_id = {interaction.channel_id}
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            f"Quotes Channel set to {interaction.channel.mention}",
+            ephemeral=True)
+
+
+class QuoteContext(discord.app_commands.ContextMenu):
+    """Allows users to add quotes to the quoteboard by using a context
+    menu.
+    """
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(name="Quote Message", callback=self.callback)
+        self.guild_only = True
+        self.bot = bot
+
+    async def callback(
             self, interaction: discord.Interaction,
-            msg: discord.Message):
-        """Allows users to add quotes to the quoteboard by using a
-        context menu
-        """
+            message: discord.Message):
         
-        if msg.content:
-            embed = discord.Embed(
-                description=msg.content,
-                color=discord.Color.blurple(),
-                timestamp=msg.created_at)
-        else:
-            embed = discord.Embed(
-                color=discord.Colour.blurple(),
-                timestamp=msg.created_at)
-        if msg.attachments:
-            attachment_url = msg.attachments[0].url
+        embed = discord.Embed(
+            description=message.content,
+            color=discord.Colour.blurple(),
+            timestamp=message.created_at
+        ).set_author(
+            name=f"{message.author}:",
+            icon_url=message.author.avatar.url)
+        if message.attachments:
+            attachment_url = message.attachments[0].url
             embed.set_image(url=attachment_url)
-        embed.set_author(
-            name=f"{msg.author}:",
-            icon_url=msg.author.avatar.url)
-
-        quotes_channel = await self.get_quotes_channel(interaction.guild)
+        
+        quotes_channel = await self.bot.get_quotes_channel(interaction.guild)
 
         if quotes_channel is None:
             await interaction.response.send_message(
@@ -73,33 +86,42 @@ class QuotesCog(commands.Cog):
                     discord.ui.Button(
                         style=discord.ButtonStyle.link,
                         label="Jump To Message",
-                        url=msg.jump_url,
+                        url=message.jump_url,
                         emoji="⤴️")))
             await interaction.response.send_message(
                 content="quote sent 😎",
                 ephemeral=True)
 
-    @discord.app_commands.command(
-        name="quote",
-        description="Add a quote to the quoteboard.")
-    @discord.app_commands.guild_only()
+
+class QuoteCommand(discord.app_commands.Command):
+    """Allows users to add quotes to the server's quoteboard via
+    command.
+    """
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="quote",
+            description="Add a quote to the quoteboard.",
+            callback=self.callback)
+        self.guild_only = True
+        self.bot = bot
+
     @discord.app_commands.describe(
         member="The member to quote.",
         quote="What they said.")
-    async def quote_command(
+    async def callback(
             self, interaction: discord.Interaction,
             member: discord.Member, quote: str):
-        """Command to add a quote to the quoteboard."""
         
         embed = discord.Embed(
             description=quote,
             color=discord.Color.blurple(),
-            timestamp=interaction.created_at)
-        embed.set_author(
+            timestamp=interaction.created_at
+        ).set_author(
             name=f"{member}:",
             icon_url=member.avatar.url)
   
-        quotes_channel = await self.get_quotes_channel(interaction.guild)
+        quotes_channel = await self.bot.get_quotes_channel(interaction.guild)
 
         if quotes_channel is None:
             await interaction.response.send_message(
@@ -115,5 +137,6 @@ class QuotesCog(commands.Cog):
 
 
 async def setup(bot: toof.ToofBot):
-    await bot.add_cog(QuotesCog(bot))
+    bot.tree.add_command(QuoteContext(bot))
+    bot.tree.add_command(QuoteCommand(bot))
     

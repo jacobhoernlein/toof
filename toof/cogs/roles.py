@@ -6,7 +6,7 @@ the users to give to themselves.
 from dataclasses import dataclass
 
 import discord
-from discord.ext import commands
+from discord.ext.commands import Cog
 from emoji import is_emoji
 
 import toof
@@ -25,6 +25,9 @@ class ConfigRole:
 
 
 class RoleMenu(list[ConfigRole]):
+    """A list of ConfigRoles for the given guild that also contains a
+    "page" attribute.
+    """
 
     def __init__(self, list: list[ConfigRole] = None):
         super().__init__(list)
@@ -237,15 +240,14 @@ class RoleDeleteSelect(discord.ui.Select):
             placeholder="Choose a role to delete.", min_values=0,
             max_values=1, options=options, row=1, *args, **kwargs)
 
-        # Creates a list of roles relating to the given type
-        self.role_list = [conf_role.role for conf_role in role_menu.current]
+        self.role_menu = role_menu
 
     async def callback(self, interaction: discord.Interaction):
         """Asks the user to confirm if they wish to delete the role."""
 
         role = discord.utils.find(
             lambda r: r.id == int(self.values[0]),
-            self.role_list)
+            [cr.role for cr in self.role_menu.current])
         await interaction.response.edit_message(
             content=f"delete {role.mention}?",
             view=RoleDeleteConfirmView(role),)
@@ -298,42 +300,43 @@ class RoleDeleteConfirmView(discord.ui.View):
             view=None)
 
 
-class RolesCog(commands.Cog):
-    """Cog containing commands relating to roles."""
- 
+class RolesCommand(discord.app_commands.Command):
+    """Sends the user the roles add menu."""
+
     def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="roles",
+            description="Give yourself some roles. Take away some roles. Yeah.",
+            callback=self.callback)
+        self.guild_only = True
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_guild_role_delete(self, role: discord.Role):
-        """Removes the role from the config if it was created through
-        commands.
-        """
-
-        await self.bot.db.execute(f'DELETE FROM roles WHERE role_id = {role.id}')
-        await self.bot.db.commit()
-
-    @discord.app_commands.command(
-        name="roles",
-        description="Give yourself some roles. Take away some roles. Yeah.")
-    @discord.app_commands.guild_only()
-    async def roles_command(self, interaction: discord.Interaction):
-        """Sends the user the roles add menu."""
-        
+    async def callback(self, interaction: discord.Interaction):
         guild_role_menu = await RoleMenu.from_db(self.bot, interaction.guild)
         await interaction.response.send_message(
             view=RoleAddView(interaction, guild_role_menu),
             ephemeral=True)
 
+
+class RolesConfig(discord.app_commands.Group):
+    """Config for roles that lets moderators create and delete new
+    roles.
+    """
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="roles",
+            description="Config commands relating to the roles functionality.")
+        self.bot = bot
+
     @discord.app_commands.command(
-        name="createrole",
+        name="create",
         description="Create a role that users can give themselves.")
     @discord.app_commands.choices(type=[
         discord.app_commands.Choice(name="Pings", value=1),
         discord.app_commands.Choice(name="Gaming", value=2),
         discord.app_commands.Choice(name="Pronouns", value=3)])
     @discord.app_commands.describe(type="What type of role to create.")
-    @discord.app_commands.guild_only()
     async def createrole_command(
             self, interaction: discord.Interaction,
             type: discord.app_commands.Choice[int]):
@@ -347,14 +350,13 @@ class RolesCog(commands.Cog):
                 title=f"Create a new {type.name} role:"))
     
     @discord.app_commands.command(
-        name="deleterole",
+        name="delete",
         description="Get rid of a certain role.")
     @discord.app_commands.choices(type=[
         discord.app_commands.Choice(name="Pings", value=1),
         discord.app_commands.Choice(name="Gaming", value=2),
         discord.app_commands.Choice(name="Pronouns", value=3)])
     @discord.app_commands.describe(type="What type of role to delete.")
-    @discord.app_commands.guild_only()
     async def deleterole_command(
             self, interaction: discord.Interaction,
             type: discord.app_commands.Choice[int]):
@@ -365,8 +367,20 @@ class RolesCog(commands.Cog):
         
         await interaction.response.send_message(
             view=RoleDeleteView(guild_role_menu),
-            ephemeral=True
-        )
+            ephemeral=True)
+
+
+class RolesCog(Cog):
+
+    def __init__(self, bot: toof.ToofBot):
+        bot.tree.add_command(RolesCommand(bot))
+        self.bot = bot
+
+    @Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
+        query = f"DELETE FROM roles WHERE role_id = {role.id}"
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
 
 
 async def setup(bot: toof.ToofBot):
