@@ -206,10 +206,11 @@ class Collection:
     def __init__(
             self, usr_pics: ToofPics, all_pics: ToofPics = ToofPics(),
             user: discord.User = None):
-        self.pics = usr_pics
         self.__overview = self.__get_overview_embed(usr_pics, all_pics, user)
-        self.__page = PicRarity.overview
         self.__index = 0
+        self.__page = PicRarity.overview
+        self.cur_pics = []
+        self.pics = usr_pics
 
     @classmethod
     async def from_db(
@@ -235,19 +236,14 @@ class Collection:
         return cls(usr_pics, all_pics, user)
 
     @property
-    def cur_pics(self) -> list[ToofPic]:
-        """Return the list that relates to the current page."""
-        return [pic for pic in self.pics if pic.rarity == self.page]
-
-    @property
-    def cur_content(self):
+    def cur_content(self) -> str | None:
         """The current content for the menu."""
         if self.page == PicRarity.overview or self.cur_pics:
             return None
         return f"You don't have any {self.page} ToofPics!"
         
     @property
-    def cur_embed(self):
+    def cur_embed(self) -> discord.Embed | None:
         """The current embed of the menu."""
         if self.page == PicRarity.overview:
             return self.__overview
@@ -269,7 +265,8 @@ class Collection:
             raise TypeError(f"Cannot set Collection.page to {new_page.__class__}")
         if new_page != self.page:
             self.__index = 0
-        self.__page = new_page
+            self.__page = new_page
+            self.cur_pics = self.pics[new_page]
 
     @property
     def index(self):

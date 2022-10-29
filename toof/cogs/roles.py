@@ -369,6 +369,44 @@ class RolesConfig(discord.app_commands.Group):
             view=RoleDeleteView(guild_role_menu),
             ephemeral=True)
 
+    @discord.app_commands.command(
+        name="member",
+        description="Set the member role for the server.")
+    async def memberrole_command(
+            self, interaction: discord.Interaction,
+            role: discord.Role):
+        """Lets users set the member role for the server."""
+
+        query = f"""
+            UPDATE guilds
+            SET member_role_id = {role.id}
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            f"Member role set to {role.mention}",
+            ephemeral=True)
+
+    @discord.app_commands.command(
+        name="mod",
+        description="Set the mod role for the server.")
+    async def modrole_command(
+            self, interaction: discord.Interaction,
+            role: discord.Role):
+        """Lets users set the mod role for the server."""
+
+        query = f"""
+            UPDATE guilds
+            SET mod_role_id = {role.id}
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            f"Mod role set to {role.mention}",
+            ephemeral=True)
+
 
 class RolesCog(Cog):
 
