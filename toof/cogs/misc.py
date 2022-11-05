@@ -28,10 +28,24 @@ class PingCommand(discord.app_commands.Command):
             ephemeral=True)
 
 
+class AvatarCommand(discord.app_commands.Command):
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="avatar",
+            description="Get a user's avatar.",
+            callback=self.callback)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction, user: discord.User):
+        await interaction.response.send_message(user.avatar.url)
+
+
 class MiscCog(Cog):
 
     def __init__(self, bot: toof.ToofBot):
         bot.tree.add_command(PingCommand(bot))
+        bot.tree.add_command(AvatarCommand(bot))
         self.change_status.start()
         self.check_day.start()
         self.bot = bot
