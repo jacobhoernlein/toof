@@ -24,6 +24,12 @@ class ConfigCommandGroup(discord.app_commands.Group):
         self.add_command(RolesConfig(bot))
         self.add_command(WelcomeChannelConfig(bot))
 
+    # FIXME: Implement permissions for config commands.
+    async def on_error(
+            self, interaction: discord.Interaction,
+            error: discord.app_commands.AppCommandError):
+        return await super().on_error(interaction, error)
+
 
 class CongfigCog(Cog):
     

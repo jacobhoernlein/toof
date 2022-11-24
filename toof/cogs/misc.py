@@ -28,24 +28,31 @@ class PingCommand(discord.app_commands.Command):
             ephemeral=True)
 
 
-class AvatarCommand(discord.app_commands.Command):
+class GetAvatarContext(discord.app_commands.ContextMenu):
+    """Lets users see others' ToofPic Collections via context menu."""
 
-    def __init__(self, bot: toof.ToofBot):
+    def __init__(self):
         super().__init__(
-            name="avatar",
-            description="Get a user's avatar.",
+            name="Get Avatar",
             callback=self.callback)
-        self.bot = bot
 
-    async def callback(self, interaction: discord.Interaction, user: discord.User):
-        await interaction.response.send_message(user.avatar.url)
-
+    async def callback(
+            self, interaction: discord.Interaction,
+            user: discord.User):
+        embed = discord.Embed(
+            color=discord.Color.blurple(),
+            title=f"{user.display_name}'s Avatar:")
+        embed.set_image(url=user.display_avatar.url)
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True)
+        
 
 class MiscCog(Cog):
 
     def __init__(self, bot: toof.ToofBot):
         bot.tree.add_command(PingCommand(bot))
-        bot.tree.add_command(AvatarCommand(bot))
+        bot.tree.add_command(GetAvatarContext())
         self.change_status.start()
         self.check_day.start()
         self.bot = bot
