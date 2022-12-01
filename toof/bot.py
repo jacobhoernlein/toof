@@ -8,6 +8,8 @@ import aiosqlite
 import discord
 from discord.ext import commands
 
+from .pics import ToofPic, ToofPics, Collection
+
 
 class ToofBot(commands.Bot):
     """Subclass of discord.ext.commands.Bot that contains an aiosqlite
@@ -150,6 +152,39 @@ class ToofBot(commands.Bot):
             return None
         return self.get_channel(row[0])
         
+    async def get_pics(self):
+        """Return a list of all ToofPics by referencing the database."""
+
+        query = "SELECT * FROM pics WHERE user_id = 0"
+        async with self.db.execute(query) as cursor:
+            list = [
+                ToofPic(row[1], row[2], row[3], row[4])
+                async for row in cursor
+            ]
+        return ToofPics(list)
+
+    async def get_collection(
+            self, user: discord.User,
+            all_pics: ToofPics = ToofPics()):
+        """Returns a menu for the given user by referencing the
+        database.
+        """
+
+        if not all_pics:
+            all_pics = await self.get_pics()
+
+        if self.user == user:
+            usr_pics = ToofPics(sorted(all_pics))
+        else:
+            query = f"SELECT * FROM pics WHERE user_id = {user.id}"
+            async with self.db.execute(query) as cursor:
+                usr_pics = ToofPics(sorted([
+                    ToofPic(row[1], row[2], row[3], row[4])
+                    async for row in cursor
+                ]))
+
+        return Collection(usr_pics, all_pics, user)
+    
     @property
     def toofping_emote(self):
         return discord.utils.find(lambda e: e.name == "toofping", self.emojis)
