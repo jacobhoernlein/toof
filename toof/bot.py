@@ -62,6 +62,10 @@ class ToofBot(commands.Bot):
             CREATE TABLE IF NOT EXISTS threads (
                 thread_id INTEGER,
                 user_id INTEGER)""")
+        await self.db.execute("""
+            CREATE TABLE IF NOT EXISTS credit (
+                user_id INTEGER,
+                score INTEGER)""")
         await self.db.commit()
 
         cur_path = os.path.dirname(__file__)
@@ -90,6 +94,30 @@ class ToofBot(commands.Bot):
         if row is None:
             return None
         return datetime.datetime.strptime(row[0], "%m/%d/%Y")
+
+    async def get_credit(self, user: discord.User):
+        """Get the credit score of the user."""
+
+        query = f"SELECT score FROM credit WHERE user_id = {user.id}"
+        async with self.db.execute(query) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            query = f"INSERT INTO credit VALUES ({user.id}, 0)"
+            await self.db.execute(query)
+            await self.db.commit()
+            return 0
+        else:
+            return row[0]
+
+    async def change_credit(self, user: discord.User, change: int):
+        """Change the credit of the user by the specified ammount."""
+
+        score = await self.get_credit(user)
+
+        query = f"UPDATE credit SET score = {score + change} WHERE user_id = {user.id}"
+        await self.db.execute(query)
+        await self.db.commit()
+
 
     async def get_log_channel(self, guild: discord.Guild):
         """Get the log channel for the server."""
