@@ -152,6 +152,9 @@ class ModCog(Cog):
         if log_channel is None or before.channel == log_channel:
             return
 
+        if message.channel.id == 937093915482415104: # temp fix (no thanks)
+            return
+
         embed = discord.Embed(
             color=discord.Color.orange(),
             timestamp=after.edited_at)
