@@ -6,8 +6,71 @@ import datetime
 
 import discord
 from discord.ext.commands import Cog
+from num2words import num2words
 
 import toof
+
+
+class VoiceConfig(discord.app_commands.Group):
+
+    def __init__(self, bot: toof.ToofBot):
+        super().__init__(
+            name="voice",
+            description="Configure voice channel category.")
+        self.bot = bot
+
+    @discord.app_commands.command(
+        name="disable",
+        description="Disable automatic channel updates.")
+    async def disable_command(self, interaction: discord.Interaction):
+        query = f"""
+            UPDATE guilds
+            SET voice_category_id = 0
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            "Channel Category Log disabled.", ephemeral=True)
+    
+    @discord.app_commands.command(
+        name="set",
+        description="Set the voice channel category to update.")
+    async def set_command(self, interaction: discord.Interaction, id):
+        
+        try:
+            id = int(id)
+        except ValueError:
+            await interaction.response.send_message(
+                "Enter ID as integer.", ephemeral=True)
+            return
+
+        query = f"""
+            UPDATE guilds
+            SET voice_category_id = {id}
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            f"Channel Category set.", ephemeral=True)
+        
+    @discord.app_commands.command(
+        name="create",
+        description="Create a new category for voice channels.")
+    async def create_command(self, interaction: discord.Interaction):
+        category = await interaction.guild.create_category("Voice Channels")
+        await category.create_voice_channel("Voice One")
+
+        query = f"""
+            UPDATE guilds
+            SET voice_category_id = {category.id}
+            WHERE guild_id = {interaction.guild_id}"""
+        await self.bot.db.execute(query)
+        await self.bot.db.commit()
+
+        await interaction.response.send_message(
+            "Channel Category created.", ephemeral=True)
 
 
 class CheckVoiceContext(discord.app_commands.ContextMenu):
@@ -64,7 +127,7 @@ class VoiceCog(Cog):
         
         bot.tree.add_command(CheckVoiceContext(bot, self.id_time_dict))
         self.bot = bot
-        
+         
     @Cog.listener()
     async def on_resumed(self):
         # Creates a list of all members currently in a voice channel
@@ -91,13 +154,28 @@ class VoiceCog(Cog):
     @Cog.listener()
     async def on_voice_state_update(
             self, member: discord.Member, 
-            before: discord.VoiceState, after: discord.VoiceState):
+            _, after: discord.VoiceState):
+        
         # Member joins a voice channel
         if after.channel and member.id not in self.id_time_dict:
             self.id_time_dict[member.id] = datetime.datetime.now()
+            
         # Member leaves voice
         if not after.channel and member.id in self.id_time_dict:
             del self.id_time_dict[member.id]
+
+        category = await self.bot.get_category(member.guild)
+        if not isinstance(category, discord.CategoryChannel):
+            return
+
+        empty_channels = [c for c in category.voice_channels if not c.members]
+        
+        if not empty_channels:
+            await category.create_voice_channel(
+                f"voice {num2words(len(category.voice_channels) + 1)}")
+
+        if len(empty_channels) >= 2:
+            await empty_channels[-1].delete()
 
     
 async def setup(bot: toof.ToofBot):
