@@ -36,7 +36,7 @@ class VoiceConfig(discord.app_commands.Group):
     @discord.app_commands.command(
         name="set",
         description="Set the voice channel category to update.")
-    async def set_command(self, interaction: discord.Interaction, id):
+    async def set_command(self, interaction: discord.Interaction, id: str):
         
         try:
             id = int(id)
@@ -60,7 +60,7 @@ class VoiceConfig(discord.app_commands.Group):
         description="Create a new category for voice channels.")
     async def create_command(self, interaction: discord.Interaction):
         category = await interaction.guild.create_category("Voice Channels")
-        await category.create_voice_channel("Voice One")
+        await category.create_voice_channel("voice one")
 
         query = f"""
             UPDATE guilds
@@ -164,18 +164,31 @@ class VoiceCog(Cog):
         if not after.channel and member.id in self.id_time_dict:
             del self.id_time_dict[member.id]
 
+        # Get the empty channels for the guild's category
+        # If it doesn't exist, simply return.
         category = await self.bot.get_category(member.guild)
         if not isinstance(category, discord.CategoryChannel):
             return
-
         empty_channels = [c for c in category.voice_channels if not c.members]
         
+        # Add an empty channel since all channels are full.
         if not empty_channels:
             await category.create_voice_channel(
                 f"voice {num2words(len(category.voice_channels) + 1)}")
 
+        # Delete an empty channel since 2 are empty.
         if len(empty_channels) >= 2:
-            await empty_channels[-1].delete()
+            del_channel = empty_channels[-1]
+            await del_channel.delete()
+
+            # Rename and reorder leftover channels.
+            for i, channel in enumerate([
+                c for c in category.voice_channels
+                if c != del_channel]):
+                
+                await channel.edit(
+                    name=f"voice {num2words(i + 1)}",
+                    position=i)
 
     
 async def setup(bot: toof.ToofBot):
