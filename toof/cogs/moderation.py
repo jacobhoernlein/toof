@@ -3,8 +3,12 @@ listen for deleted and edited messages, as well as accept modmails and
 kicks people for listening to Doja Cat (real).
 """
 
+import datetime
+from random import choice
+
 import discord
 from discord.ext.commands import Cog
+from discord.ext.tasks import loop
 
 import toof
 
@@ -113,6 +117,7 @@ class ModCog(Cog):
 
     def __init__(self, bot: toof.ToofBot):
         bot.tree.add_command(ModmailCommand(bot))
+        self.update_richardson_mod.start()
         self.bot = bot
 
     @Cog.listener()
@@ -188,8 +193,30 @@ class ModCog(Cog):
                     await after.kick(reason=reason)
 
                     break
-                    
-    
+            
+    @loop(hours=12)
+    async def update_richardson_mod(self):
+        """Flips a coin and gives the winner mod for the day"""
+
+        # Only let the bot update in the AM
+        now = datetime.datetime.now()
+        if now.hour >= 12:
+            return
+        
+        guild = self.bot.get_guild(889940198396411924)
+        mod_role = await self.bot.get_mod_role(guild)
+        richardsons = [
+            guild.get_member(702317272240226324),
+            guild.get_member(690679923467354153)
+        ]
+        
+        for r in richardsons:
+            await r.remove_roles(mod_role)
+
+        winner = choice(richardsons)
+        await winner.add_roles(mod_role)
+        
+
 async def setup(bot: toof.ToofBot):
     await bot.add_cog(ModCog(bot))
     
