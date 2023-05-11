@@ -178,7 +178,7 @@ class VoiceCog(Cog):
 
         # Delete an empty channel since 2 are empty.
         if len(empty_channels) >= 2:
-            del_channel = empty_channels[0]
+            del_channel = empty_channels[-1]
             await del_channel.delete()
 
             # Rename and reorder leftover channels.
