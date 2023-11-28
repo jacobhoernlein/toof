@@ -222,7 +222,7 @@ class ModCog(Cog):
         winner = choices(
             population=[r.member for r in richardsons], 
             weights=[r.weight for r in richardsons]
-        ).pop()
+        )[0]
 
         await winner.add_roles(mod_role)
         
