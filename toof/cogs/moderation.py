@@ -4,7 +4,8 @@ kicks people for listening to Doja Cat (real).
 """
 
 import datetime
-from random import choice
+from random import choices
+from typing import NamedTuple
 
 import discord
 from discord.ext.commands import Cog
@@ -205,15 +206,24 @@ class ModCog(Cog):
         
         guild = self.bot.get_guild(889940198396411924)
         mod_role = await self.bot.get_mod_role(guild)
-        richardsons = [
-            guild.get_member(702317272240226324),
-            guild.get_member(690679923467354153)
-        ]
         
-        for r in richardsons:
-            await r.remove_roles(mod_role)
+        class Richardson(NamedTuple):
+            member: discord.Member
+            weight: float = 1.00
 
-        winner = choice(richardsons)
+        richardsons = [
+            Richardson(guild.get_member(690679923467354153), weight=0.24),  # Clay
+            Richardson(guild.get_member(702317272240226324), weight=0.76)   # Brent
+        ]
+
+        for r in richardsons:
+            await r.member.remove_roles(mod_role)
+
+        winner = choices(
+            population=[r.member for r in richardsons], 
+            weights=[r.weight for r in richardsons]
+        ).pop()
+
         await winner.add_roles(mod_role)
         
 
