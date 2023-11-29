@@ -26,6 +26,8 @@ class ToofBot(Bot):
         self.db: aiosqlite.Connection = None
         self.dbname = dbname
 
+        self.owner_id = 243845903146811393
+
     def run(self, token: str):
         super().run(token)
         asyncio.run(self.db.close())
