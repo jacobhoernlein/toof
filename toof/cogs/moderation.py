@@ -212,8 +212,8 @@ class ModCog(Cog):
             weight: float = 1.00
 
         richardsons = [
-            Richardson(guild.get_member(690679923467354153), weight=0.24),  # Clay
-            Richardson(guild.get_member(702317272240226324), weight=0.76)   # Brent
+            Richardson(guild.get_member(690679923467354153), weight=0.6),  # Clay
+            Richardson(guild.get_member(702317272240226324), weight=0.4)   # Brent
         ]
 
         for r in richardsons:
