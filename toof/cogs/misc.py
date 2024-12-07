@@ -136,7 +136,7 @@ class MiscCog(Cog):
         if msg.author == self.bot.user:
             return
         
-        if self.no_youre(msg):
+        if await self.no_youre(msg):
             return
 
         if "car ride" in msg.content.lower():
