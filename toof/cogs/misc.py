@@ -123,8 +123,10 @@ class MiscCog(Cog):
                     pass
 
     async def no_youre(self, msg: discord.Message):
-        pattern = r"\bi(?:'?m| am) +(.+?)(?:[,.!?]|$)"
-        if match := re.search(pattern, msg, flags=re.IGNORECASE):
+        pattern = re.compile(pattern, flags=re.IGNORECASE)
+        print(msg.content)
+        print(msg.content.__class__)
+        if match := pattern.search(msg.content):
             response = f"hi \"{match.group(1)}\". im toof!"
             await msg.reply(response)
             return True
