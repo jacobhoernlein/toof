@@ -5,6 +5,7 @@ extensions. Ping command, status changes, happy friday, etc.
 import datetime
 import os
 from random import choice
+import re
 
 import discord
 from discord.ext.commands import Cog
@@ -121,11 +122,21 @@ class MiscCog(Cog):
                     # send to the channel.
                     pass
 
+    async def no_youre(self, msg: discord.Message):
+        pattern = r"\bi(?:'?m| am) +(.+?)(?:[,.!?]|$)"
+        if match := re.search(pattern, msg, flags=re.IGNORECASE):
+            response = f"hi \"{match.group(1)}\". im toof!"
+            await msg.reply(response)
+            return True
+
     @Cog.listener()
     async def on_message(self, msg: discord.Message):
         if msg.author == self.bot.user:
             return
         
+        if self.no_youre(msg):
+            return
+
         if "car ride" in msg.content.lower():
             await msg.channel.send("WOOF.")
         elif "good boy" in msg.content.lower():
