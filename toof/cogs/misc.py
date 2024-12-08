@@ -128,14 +128,13 @@ class MiscCog(Cog):
             return
         
         # hi im toof
-        match = re.compile(
-            r"\b(?!.*@everyone)(?:im|i'm|i am) +([^.,!?'\"\n]*)", 
-            flags=re.IGNORECASE
-        ).search(msg.content)
+        match = re.search(
+            r"\b(?!.*@everyone)(?:im|i'm|i am) +([^.,!?\n]*)",
+            msg.content,
+            flags=re.IGNORECASE)
         if match and match.group(1):
             response = f"hi \"{match.group(1)}\". im toof!"
             await msg.reply(response)
-            return True
             
         if "car ride" in msg.content.lower():
             await msg.channel.send("WOOF.")
