@@ -122,21 +122,21 @@ class MiscCog(Cog):
                     # send to the channel.
                     pass
 
-    async def no_youre(self, msg: discord.Message):
-        pattern = re.compile(r"\bi(?:'?m| am) (.+?)(?:[,.!?]|$)", flags=re.IGNORECASE)
-        if match := pattern.search(msg.content):
-            response = f"hi \"{match.group(1)}\". im toof!"
-            await msg.reply(response)
-            return True
-
     @Cog.listener()
     async def on_message(self, msg: discord.Message):
         if msg.author == self.bot.user:
             return
         
-        if await self.no_youre(msg):
-            return
-
+        # hi im toof
+        match = re.compile(
+            r"\b(?!.*@everyone)(?:im|i'm|i am) +([^.,!?'\"\n]*)", 
+            flags=re.IGNORECASE
+        ).search(msg.content)
+        if match and match.group(1):
+            response = f"hi \"{match.group(1)}\". im toof!"
+            await msg.reply(response)
+            return True
+            
         if "car ride" in msg.content.lower():
             await msg.channel.send("WOOF.")
         elif "good boy" in msg.content.lower():
