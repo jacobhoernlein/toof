@@ -129,7 +129,7 @@ class MiscCog(Cog):
         
         # hi im toof
         match = re.search(
-            r"\b(?!.*@everyone)(?:im|i'm|i am) +([^.,!?\n]*)",
+            r"\b(?!.*@everyone)(?:im|i['’]m|i am) +([^.,!?\n]*)",
             msg.content,
             flags=re.IGNORECASE)
         if match and match.group(1):
@@ -145,8 +145,7 @@ class MiscCog(Cog):
             and not msg.author.bot
             and not msg.reference.cached_message.author.bot):
 
-            await msg.add_reaction(self.bot.toofping_emote)
-                     
+            await msg.add_reaction(self.bot.toofping_emote)      
 
     @Cog.listener()
     async def on_reaction_add(
