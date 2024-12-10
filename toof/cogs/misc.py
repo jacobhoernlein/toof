@@ -127,15 +127,17 @@ class MiscCog(Cog):
         if msg.author == self.bot.user:
             return
         
-        # hi im toof
+        # Replaces their nickname if their message contains "I'm..."
         match = re.search(
             r"\b(?!.*@everyone)(?:im|i['’]m|i am) +([^.,!?\n]*)",
             msg.content,
             flags=re.IGNORECASE)
         if match and match.group(1):
-            response = f"hi \"{match.group(1)}\". im toof!"
-            await msg.reply(response)
-            
+            try:
+                await msg.author.edit(nick=match.group(1))
+            except (discord.errors.Forbidden, discord.errors.HTTPException):
+                pass
+
         if "car ride" in msg.content.lower():
             await msg.channel.send("WOOF.")
         elif "good boy" in msg.content.lower():
