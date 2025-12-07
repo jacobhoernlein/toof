@@ -124,6 +124,7 @@ class MiscCog(Cog):
 
     @Cog.listener()
     async def on_message(self, msg: discord.Message):
+        print(msg)
         if msg.author == self.bot.user:
             return
         

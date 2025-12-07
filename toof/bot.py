@@ -172,19 +172,28 @@ class ToofBot(Bot):
         """Returns a menu for the given user by referencing the
         database.
         """
+        
+        print("getting collection for", user)
 
         if not all_pics:
             all_pics = await self.get_pics()
+            
+        print("  got all pics:", len(all_pics))
 
         if self.user == user:
             usr_pics = ToofPics(sorted(all_pics))
         else:
+            print("  querying user pics")
             query = f"SELECT * FROM pics WHERE user_id = {user.id}"
             async with self.db.execute(query) as cursor:
+                all_rows = await cursor.fetchall()
+                print("  got user pics:", len(all_rows))
                 usr_pics = ToofPics(sorted([
                     ToofPic(row[1], row[2], row[3], row[4])
-                    async for row in cursor
+                    for row in all_rows
                 ]))
+                
+        print("  constructed user pics:", len(usr_pics))
 
         return Collection(usr_pics, all_pics, user)
     
