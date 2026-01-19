@@ -1,4 +1,10 @@
-venv
 __pycache__
 toof.sqlite
+
+# IDE files
 .vscode
+
+# Environment files
+venv
+.envrc
+.direnv
