@@ -24,7 +24,6 @@ class PicRarity:
         self.description = description
         
     @classmethod
-    @property
     def overview(cls):
         return cls(
             name="overview", value=0, weight=0,
@@ -33,7 +32,6 @@ class PicRarity:
             description="Shows an overview of your entire ToofPic collection.")
 
     @classmethod
-    @property
     def common(cls):
         return cls(
             name="common", value=1, weight=1,
@@ -42,7 +40,6 @@ class PicRarity:
             description="Normal, run-of-the-mill ToofPics. (He is such a good boy).")
 
     @classmethod
-    @property
     def rare(cls):
         return cls(
             name="rare", value=2, weight=0.1,
@@ -51,7 +48,6 @@ class PicRarity:
             description="ToofPics of a bit higher quality. They are blue flavored.")
 
     @classmethod
-    @property
     def legendary(cls):
         return cls(
             name="legendary", value=3, weight=0.01,
@@ -60,7 +56,6 @@ class PicRarity:
             description="The rarest, most awe-inspiring ToofPics money can buy.")
 
     @classmethod
-    @property
     def unknown(cls):
         return cls(
             name="unknown", value=100, weight=0,
@@ -71,21 +66,21 @@ class PicRarity:
     @classmethod
     def list(cls):
         """Returns a list of all rarities."""
-        return [cls.common, cls.rare, cls.legendary]
+        return [cls.common(), cls.rare(), cls.legendary()]
 
     @classmethod
     def get(cls, page: str):
         match page[0].upper():
             case "O":
-                return cls.overview
+                return cls.overview()
             case "C":
-                return cls.common
+                return cls.common()
             case "R":
-                return cls.rare
+                return cls.rare()
             case "L":
-                return cls.legendary
+                return cls.legendary()
             case _:
-                return cls.unknown
+                return cls.unknown()
 
     def __eq__(self, other):
         if isinstance(other, PicRarity):

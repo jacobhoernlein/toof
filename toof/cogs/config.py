@@ -39,8 +39,9 @@ class CongfigCog(Cog):
         bot.tree.add_command(ConfigCommandGroup(bot))
         self.bot = bot
 
-    @Cog.listener()
+    @Cog.listener("on_guild_join")
     async def on_guild_join(self, guild: discord.Guild):
+        print("joined guild:", guild.name)
         query =f"INSERT INTO guilds VALUES ({guild.id}, 0, 0, 0, 0, 0)"
         await self.bot.db.execute(query)
         await self.bot.db.commit()

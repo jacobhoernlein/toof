@@ -120,13 +120,21 @@ class PicCommandGroup(discord.app_commands.Group):
         """Selects a rarity based on chance, opens that a file of that
         rarity, and sends it.
         """
+        
+        print("pic roll by", interaction.user)
 
         all_pics = await self.bot.get_pics()
         pic = all_pics.get_random()
         pic.dt = interaction.created_at
+        
+        print("  selected pic:", pic.id)
 
         collection = await self.bot.get_collection(interaction.user, all_pics)
+        
+        print("  user has pics:", [p.id for p in collection.pics])
+        
         if pic not in collection.pics:
+            print("  new pic for user!")
             query = f"""
                 INSERT INTO pics
                 VALUES (
@@ -134,6 +142,8 @@ class PicCommandGroup(discord.app_commands.Group):
                     '{pic.link}', '{pic.date}')"""
             await self.bot.db.execute(query)
             await self.bot.db.commit()
+            
+        print("  got pic:", pic.id)
 
         await interaction.response.send_message(embed=pic.embed)
 
