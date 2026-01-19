@@ -118,7 +118,7 @@ class ModCog(Cog):
 
     def __init__(self, bot: toof.ToofBot):
         bot.tree.add_command(ModmailCommand(bot))
-        self.update_richardson_mod.start()
+        # self.update_richardson_mod.start()
         self.bot = bot
 
     @Cog.listener()
@@ -195,36 +195,36 @@ class ModCog(Cog):
 
                     break
             
-    @loop(hours=12)
-    async def update_richardson_mod(self):
-        """Flips a coin and gives the winner mod for the day"""
+    # @loop(hours=12)
+    # async def update_richardson_mod(self):
+    #     """flips a coin and gives the winner mod for the day"""
 
-        # Only let the bot update in the AM
-        now = datetime.datetime.now()
-        if now.hour >= 12:
-            return
+    #     # only let the bot update in the am
+    #     now = datetime.datetime.now()
+    #     if now.hour >= 12:
+    #         return
         
-        guild = self.bot.get_guild(889940198396411924)
-        mod_role = await self.bot.get_mod_role(guild)
+    #     guild = self.bot.get_guild(889940198396411924)
+    #     mod_role = await self.bot.get_mod_role(guild)
         
-        class Richardson(NamedTuple):
-            member: discord.Member
-            weight: float = 1.00
+    #     class richardson(namedtuple):
+    #         member: discord.member
+    #         weight: float = 1.00
 
-        richardsons = [
-            Richardson(guild.get_member(690679923467354153), weight=0.6),  # Clay
-            Richardson(guild.get_member(702317272240226324), weight=0.4)   # Brent
-        ]
+    #     richardsons = [
+    #         richardson(guild.get_member(690679923467354153), weight=0.6),  # clay
+    #         richardson(guild.get_member(702317272240226324), weight=0.4)   # brent
+    #     ]
 
-        for r in richardsons:
-            await r.member.remove_roles(mod_role)
+    #     for r in richardsons:
+    #         await r.member.remove_roles(mod_role)
 
-        winner = choices(
-            population=[r.member for r in richardsons], 
-            weights=[r.weight for r in richardsons]
-        )[0]
+    #     winner = choices(
+    #         population=[r.member for r in richardsons], 
+    #         weights=[r.weight for r in richardsons]
+    #     )[0]
 
-        await winner.add_roles(mod_role)
+    #     await winner.add_roles(mod_role)
         
 
 async def setup(bot: toof.ToofBot):

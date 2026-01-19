@@ -8,3 +8,4 @@ toof.sqlite
 venv
 .envrc
 .direnv
+.env

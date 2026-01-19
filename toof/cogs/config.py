@@ -8,8 +8,6 @@ import toof
 from .moderation import ModLogConfig
 from .quotes import QuotesChannelConfig
 from .roles import RolesConfig
-from .voice import VoiceConfig
-from .welcome import WelcomeChannelConfig
 
 
 class ConfigCommandGroup(discord.app_commands.Group):
@@ -23,8 +21,6 @@ class ConfigCommandGroup(discord.app_commands.Group):
         self.add_command(ModLogConfig(bot))
         self.add_command(QuotesChannelConfig(bot))
         self.add_command(RolesConfig(bot))
-        self.add_command(WelcomeChannelConfig(bot))
-        self.add_command(VoiceConfig(bot))
 
     # FIXME: Implement permissions for config commands.
     async def on_error(
@@ -42,7 +38,7 @@ class CongfigCog(Cog):
     @Cog.listener("on_guild_join")
     async def on_guild_join(self, guild: discord.Guild):
         print("joined guild:", guild.name)
-        query =f"INSERT INTO guilds VALUES ({guild.id}, 0, 0, 0, 0, 0)"
+        query =f"INSERT INTO guilds VALUES ({guild.id}, 0, 0, 0, 0, 0, 0)"
         await self.bot.db.execute(query)
         await self.bot.db.commit()
 
