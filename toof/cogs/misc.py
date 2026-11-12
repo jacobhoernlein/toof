@@ -3,7 +3,6 @@ extensions. Ping command, status changes, happy friday, etc.
 """
 
 import datetime
-import os
 from random import choice
 import re
 
@@ -28,26 +27,6 @@ class PingCommand(discord.app_commands.Command):
         await interaction.response.send_message(
             f"woof! ({round(self.bot.latency * 1000)}ms)",
             ephemeral=True)
-
-
-# class RebootCommand(discord.app_commands.Command):
-#     """Restarts the bot using the start.sh script."""
-
-#     def __init__(self, bot: toof.ToofBot):
-#         super().__init__(
-#             name="reboot",
-#             description="Pull from git and restart.",
-#             callback=self.callback)
-#         self.bot = bot
-
-#     async def callback(self, interaction: discord.Interaction):
-#         if not await self.bot.is_owner(interaction.user):
-#             await interaction.response.send_message("...no", ephemeral=True)
-#             return
-#         await interaction.response.send_message(
-#             f"rewoofing!",
-#             ephemeral=True)
-#         os.execv("/usr/bin/sh", ["sh", "start.sh"])
 
 
 class GetAvatarContext(discord.app_commands.ContextMenu):
@@ -136,6 +115,7 @@ class MiscCog(Cog):
             try:
                 await msg.author.edit(nick=match.group(1))
             except (discord.errors.Forbidden, discord.errors.HTTPException):
+                print("I added this for a CS 544 assignment")
                 pass
 
         if "car ride" in msg.content.lower():

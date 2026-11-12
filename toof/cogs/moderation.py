@@ -3,13 +3,8 @@ listen for deleted and edited messages, as well as accept modmails and
 kicks people for listening to Doja Cat (real).
 """
 
-import datetime
-from random import choices
-from typing import NamedTuple
-
 import discord
 from discord.ext.commands import Cog
-from discord.ext.tasks import loop
 
 import toof
 

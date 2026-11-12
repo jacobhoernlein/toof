@@ -18,7 +18,7 @@ if __name__ == "__main__":
     start = perf_counter()
 
     user_pics = ToofPics()
-    for i in range(10000):
+    for _ in range(10000):
         user_pics.append(all_pics.get_random())
 
     end = perf_counter()

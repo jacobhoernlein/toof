@@ -81,6 +81,7 @@ class PicRarity:
                 return cls.legendary()
             case _:
                 return cls.unknown()
+        return cls.unknown()
 
     def __eq__(self, other):
         if isinstance(other, PicRarity):
@@ -99,6 +100,9 @@ class PicRarity:
             return self.value < other
         else:
             raise TypeError(f"Less-Than not supported between Rarity and {other.__class__}")
+
+    def __le__(self, other):
+        return self < other or self == other
         
     def __str__(self):
         return self.name
@@ -146,6 +150,9 @@ class ToofPic:
         if self.rarity > other.rarity:
             return False
         return self.id < other.id
+
+    def __le__(self, other: "ToofPic"):
+        return self < other or self == other
     
 
 class ToofPics(list[ToofPic]):
